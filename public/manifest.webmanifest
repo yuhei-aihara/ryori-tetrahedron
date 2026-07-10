@@ -1,0 +1,10 @@
+{
+  "name": "料理の四面体 — 食の博物誌",
+  "short_name": "料理の四面体",
+  "description": "4つの要素を組み合わせて、新しい料理を発見するアプリ",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f4eee1",
+  "theme_color": "#f4eee1",
+  "lang": "ja"
+}
