@@ -37,9 +37,13 @@ test("keeps the product metadata and mobile entry points", async () => {
   assert.match(page, /味覚マップに反映しました/);
   assert.match(page, /料理体験チャレンジ/);
   assert.match(page, /RYORI PRO/);
+  assert.match(page, /setPointerCapture/);
+  assert.match(page, /tetra-face face-back/);
   assert.match(layout, /料理の四面体 — 食の博物誌/);
   assert.match(layout, /manifest:\s*"\/manifest\.webmanifest"/);
   assert.match(css, /position:\s*fixed/);
   assert.match(css, /bottom-nav/);
+  assert.match(css, /\.edge-tl/);
+  assert.match(css, /\.edge-rb/);
   assert.match(manifest, /"display": "standalone"/);
 });

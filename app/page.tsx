@@ -96,8 +96,8 @@ export default function Home() {
   const [whyOpen, setWhyOpen] = useState(false);
   const [toast, setToast] = useState("");
   const [recordSaved, setRecordSaved] = useState(false);
-  const [rotation, setRotation] = useState(0);
-  const dragStart = useRef<number | null>(null);
+  const [rotation, setRotation] = useState({ x: 0, y: 0 });
+  const dragStart = useRef<{ x: number; y: number; rotationX: number; rotationY: number } | null>(null);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -238,13 +238,23 @@ export default function Home() {
             setActiveCategory={setActiveCategory}
             onSelect={updateSelection}
             rotation={rotation}
-            onPointerDown={(event: ReactPointerEvent<HTMLDivElement>) => { dragStart.current = event.clientX; }}
+            onPointerDown={(event: ReactPointerEvent<HTMLDivElement>) => {
+              event.currentTarget.setPointerCapture(event.pointerId);
+              dragStart.current = { x: event.clientX, y: event.clientY, rotationX: rotation.x, rotationY: rotation.y };
+            }}
             onPointerMove={(event: ReactPointerEvent<HTMLDivElement>) => {
               if (dragStart.current === null) return;
-              setRotation((current) => current + (event.clientX - dragStart.current!) * 0.2);
-              dragStart.current = event.clientX;
+              const deltaX = event.clientX - dragStart.current.x;
+              const deltaY = event.clientY - dragStart.current.y;
+              setRotation({
+                x: Math.max(-32, Math.min(32, dragStart.current.rotationX + deltaX * 0.34)),
+                y: Math.max(-24, Math.min(24, dragStart.current.rotationY - deltaY * 0.28)),
+              });
             }}
-            onPointerUp={() => { dragStart.current = null; }}
+            onPointerUp={(event: ReactPointerEvent<HTMLDivElement>) => {
+              if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+              dragStart.current = null;
+            }}
             onRandomize={() => randomize(false)}
             onNudge={() => randomize(true)}
             onSearch={() => setToast("この4要素から、料理候補を並べました")}
@@ -367,13 +377,14 @@ function DishRow({ dish, onOpen }: { dish: Dish; onOpen: () => void }) {
 }
 
 function TetraScreen({ selection, activeCategory, setActiveCategory, onSelect, rotation, onPointerDown, onPointerMove, onPointerUp, onRandomize, onNudge, onSearch, suggestions, onOpenDish, onSave, savedDishIds }: {
-  selection: Record<ElementCategory, string>; activeCategory: ElementCategory; setActiveCategory: (category: ElementCategory) => void; onSelect: (category: ElementCategory, id: string) => void; rotation: number; onPointerDown: (event: React.PointerEvent<HTMLDivElement>) => void; onPointerMove: (event: React.PointerEvent<HTMLDivElement>) => void; onPointerUp: () => void; onRandomize: () => void; onNudge: () => void; onSearch: () => void; suggestions: Dish[]; onOpenDish: (dish: Dish) => void; onSave: (dish: Dish) => void; savedDishIds: string[];
+  selection: Record<ElementCategory, string>; activeCategory: ElementCategory; setActiveCategory: (category: ElementCategory) => void; onSelect: (category: ElementCategory, id: string) => void; rotation: { x: number; y: number }; onPointerDown: (event: React.PointerEvent<HTMLDivElement>) => void; onPointerMove: (event: React.PointerEvent<HTMLDivElement>) => void; onPointerUp: (event: React.PointerEvent<HTMLDivElement>) => void; onRandomize: () => void; onNudge: () => void; onSearch: () => void; suggestions: Dish[]; onOpenDish: (dish: Dish) => void; onSave: (dish: Dish) => void; savedDishIds: string[];
 }) {
   const labels = activeElementsFor(selection);
   return <section className="screen tetra-screen">
     <TopBar eyebrow="発見 / 01" title="四面体を動かす" note="ドラッグできます" />
     <p className="screen-lead">4つの頂点を選ぶと、<br />料理の可能性がリアルタイムに変わります。</p>
-    <div className="tetra-stage-wrap"><div className="drag-hint">← スワイプして回転 →</div><div className="tetra-stage" style={{ transform: `rotate(${rotation * 0.08}deg)` }} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp}>
+    <div className="tetra-stage-wrap"><div className="drag-hint">← スワイプして回転 →</div><div className="tetra-stage" style={{ transform: `perspective(650px) rotateX(${rotation.y}deg) rotateY(${rotation.x}deg)` }} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp}>
+      <div className="tetra-face face-back" /><div className="tetra-face face-left" /><div className="tetra-face face-right" /><div className="tetra-face face-front" />
       <div className="edge edge-tl" /><div className="edge edge-tr" /><div className="edge edge-tb" /><div className="edge edge-lr" /><div className="edge edge-lb" /><div className="edge edge-rb" />
       {labels.map(({ category, element }, index) => <button key={category} className={`vertex vertex-${index} vertex-${category} ${activeCategory === category ? "active" : ""}`} onClick={() => setActiveCategory(category)}><span className="vertex-dot" /><span className="vertex-tag"><small>{categoryLabels[category]}</small>{element.name}</span></button>)}
       <div className="tetra-center"><span>味の<br />関係図</span></div>

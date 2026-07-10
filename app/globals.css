@@ -156,12 +156,17 @@ em { color: var(--rust); font-style: normal; }
 .tetra-screen { background: var(--paper); }
 .tetra-stage-wrap { position: relative; height: 265px; margin: 2px -7px 0; overflow: hidden; background: #eee8dd; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 .drag-hint { position: absolute; z-index: 3; top: 15px; left: 0; right: 0; color: var(--muted); text-align: center; font-size: 9px; letter-spacing: .12em; pointer-events: none; }
-.tetra-stage { position: relative; width: 300px; height: 245px; margin: 11px auto 0; touch-action: none; transition: transform .08s linear; }
-.edge { position: absolute; z-index: 0; height: 1px; transform-origin: left center; background: #8e8b7e; }
-.edge-tl { top: 68px; left: 104px; width: 126px; transform: rotate(148deg); }.edge-tr { top: 68px; left: 104px; width: 125px; transform: rotate(32deg); }.edge-tb { top: 68px; left: 104px; width: 119px; transform: rotate(90deg); }.edge-lr { top: 184px; left: 37px; width: 134px; transform: rotate(0deg); }.edge-lb { top: 184px; left: 37px; width: 119px; transform: rotate(-43deg); }.edge-rb { top: 184px; left: 171px; width: 119px; transform: rotate(43deg); }
-.tetra-center { position: absolute; top: 106px; left: 114px; z-index: 1; display: grid; place-items: center; width: 84px; height: 54px; border: 1px dashed #ada697; color: var(--muted); text-align: center; font-family: var(--font-display); font-size: 12px; line-height: 1.1; transform: skewY(-2deg); }
+.tetra-stage { position: relative; width: 300px; height: 245px; margin: 11px auto 0; touch-action: none; transform-style: preserve-3d; transform-origin: 50% 50%; will-change: transform; transition: transform .12s ease-out; }
+.tetra-face { position: absolute; z-index: 0; inset: 0; border: 1px solid rgba(72, 67, 57, .22); clip-path: polygon(50% 15.5%, 15% 69.5%, 85% 69.5%); }
+.face-back { background: rgba(78, 122, 63, .12); }
+.face-left { background: rgba(181, 74, 47, .13); clip-path: polygon(50% 15.5%, 15% 69.5%, 50% 91%); }
+.face-right { background: rgba(168, 120, 28, .13); clip-path: polygon(50% 15.5%, 85% 69.5%, 50% 91%); }
+.face-front { background: rgba(53, 96, 143, .12); clip-path: polygon(15% 69.5%, 85% 69.5%, 50% 91%); }
+.edge { position: absolute; z-index: 1; height: 2px; transform-origin: left center; background: rgba(41, 39, 35, .72); }
+.edge-tl { top: 38px; left: 150px; width: 169px; transform: rotate(128.5deg); }.edge-tr { top: 38px; left: 150px; width: 169px; transform: rotate(51.5deg); }.edge-tb { top: 38px; left: 150px; width: 185px; transform: rotate(90deg); }.edge-lr { top: 170px; left: 45px; width: 210px; transform: rotate(0deg); }.edge-lb { top: 170px; left: 45px; width: 118px; transform: rotate(26.8deg); }.edge-rb { top: 170px; left: 255px; width: 118px; transform: rotate(153.2deg); }
+.tetra-center { position: absolute; top: 103px; left: 108px; z-index: 1; display: grid; place-items: center; width: 84px; height: 54px; border: 1px dashed rgba(126, 116, 99, .7); color: var(--muted); text-align: center; font-family: var(--font-display); font-size: 12px; line-height: 1.1; }
 .vertex { position: absolute; z-index: 2; display: flex; align-items: center; gap: 6px; min-height: 44px; padding: 3px; border: 0; background: none; text-align: left; }
-.vertex-0 { top: 40px; left: 78px; }.vertex-1 { top: 169px; left: 9px; }.vertex-2 { top: 169px; right: 3px; }.vertex-3 { top: 169px; left: 127px; }
+.vertex-0 { top: 16px; left: 139px; }.vertex-1 { top: 148px; left: 34px; }.vertex-2 { top: 148px; left: 170px; flex-direction: row-reverse; }.vertex-3 { top: 201px; left: 139px; }
 .vertex-dot { display: block; width: 21px; height: 21px; border: 4px solid #eee8dd; border-radius: 50%; background: var(--sage); box-shadow: 0 0 0 1px var(--sage); }
 .vertex-method .vertex-dot { background: var(--rust); box-shadow: 0 0 0 1px var(--rust); }.vertex-seasoning .vertex-dot { background: var(--ochre); box-shadow: 0 0 0 1px var(--ochre); }.vertex-texture .vertex-dot { background: var(--plum); box-shadow: 0 0 0 1px var(--plum); }
 .vertex.active .vertex-dot { box-shadow: 0 0 0 2px var(--ink), 0 0 0 5px rgba(41, 39, 35, .15); }
