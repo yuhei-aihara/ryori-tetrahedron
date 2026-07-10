@@ -96,7 +96,7 @@ export default function Home() {
   const [whyOpen, setWhyOpen] = useState(false);
   const [toast, setToast] = useState("");
   const [recordSaved, setRecordSaved] = useState(false);
-  const [rotation, setRotation] = useState({ x: 0, y: 0 });
+  const [rotation, setRotation] = useState({ x: 18, y: 0 });
   const dragStart = useRef<{ x: number; y: number; rotationX: number; rotationY: number } | null>(null);
 
   useEffect(() => {
@@ -247,8 +247,8 @@ export default function Home() {
               const deltaX = event.clientX - dragStart.current.x;
               const deltaY = event.clientY - dragStart.current.y;
               setRotation({
-                x: Math.max(-32, Math.min(32, dragStart.current.rotationX + deltaX * 0.34)),
-                y: Math.max(-24, Math.min(24, dragStart.current.rotationY - deltaY * 0.28)),
+                x: dragStart.current.rotationX + deltaX * 0.55,
+                y: Math.max(-55, Math.min(55, dragStart.current.rotationY - deltaY * 0.45)),
               });
             }}
             onPointerUp={(event: ReactPointerEvent<HTMLDivElement>) => {
@@ -383,11 +383,8 @@ function TetraScreen({ selection, activeCategory, setActiveCategory, onSelect, r
   return <section className="screen tetra-screen">
     <TopBar eyebrow="発見 / 01" title="四面体を動かす" note="ドラッグできます" />
     <p className="screen-lead">4つの頂点を選ぶと、<br />料理の可能性がリアルタイムに変わります。</p>
-    <div className="tetra-stage-wrap"><div className="drag-hint">← スワイプして回転 →</div><div className="tetra-stage" style={{ transform: `perspective(650px) rotateX(${rotation.y}deg) rotateY(${rotation.x}deg)` }} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp}>
-      <div className="tetra-face face-back" /><div className="tetra-face face-left" /><div className="tetra-face face-right" /><div className="tetra-face face-front" />
-      <div className="edge edge-tl" /><div className="edge edge-tr" /><div className="edge edge-tb" /><div className="edge edge-lr" /><div className="edge edge-lb" /><div className="edge edge-rb" />
-      {labels.map(({ category, element }, index) => <button key={category} className={`vertex vertex-${index} vertex-${category} ${activeCategory === category ? "active" : ""}`} onClick={() => setActiveCategory(category)}><span className="vertex-dot" /><span className="vertex-tag"><small>{categoryLabels[category]}</small>{element.name}</span></button>)}
-      <div className="tetra-center"><span>味の<br />関係図</span></div>
+    <div className="tetra-stage-wrap"><div className="drag-hint">← スワイプして回転 →</div><div className="tetra-stage" onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp}>
+      <TetraCanvas labels={labels} rotation={rotation} activeCategory={activeCategory} onVertexSelect={setActiveCategory} />
     </div></div>
     <div className="selected-axis"><span className="eyebrow">選択中の頂点</span><strong>{categoryLabels[activeCategory]}</strong><span>{categoryDescriptions[activeCategory]}</span></div>
     <div className="choice-scroller">{cookingElements[activeCategory].map((item) => <button key={item.id} className={selection[activeCategory] === item.id ? "selected" : ""} onClick={() => onSelect(activeCategory, item.id)}><i style={{ backgroundColor: item.color }} />{item.name}</button>)}</div>
@@ -399,6 +396,111 @@ function TetraScreen({ selection, activeCategory, setActiveCategory, onSelect, r
 
 function activeElementsFor(selection: Record<ElementCategory, string>) {
   return categoryOrder.map((category) => ({ category, element: findElement(category, selection[category]) }));
+}
+
+type TetraPoint = { x: number; y: number; z: number };
+
+const tetraPoints: TetraPoint[] = [
+  { x: 1, y: 1, z: 1 },
+  { x: 1, y: -1, z: -1 },
+  { x: -1, y: 1, z: -1 },
+  { x: -1, y: -1, z: 1 },
+];
+
+const tetraEdges = [[0, 1], [0, 2], [0, 3], [1, 2], [1, 3], [2, 3]];
+const tetraFaces = [[0, 1, 2], [0, 1, 3], [0, 2, 3], [1, 2, 3]];
+const tetraColors = ["#4e7a3f", "#b54a2f", "#a8781c", "#35608f"];
+
+function rotateTetraPoint(point: TetraPoint, rotation: { x: number; y: number }) {
+  const yaw = (rotation.x * Math.PI) / 180;
+  const pitch = (rotation.y * Math.PI) / 180;
+  const cosYaw = Math.cos(yaw);
+  const sinYaw = Math.sin(yaw);
+  const x = point.x * cosYaw + point.z * sinYaw;
+  const zAfterYaw = -point.x * sinYaw + point.z * cosYaw;
+  const cosPitch = Math.cos(pitch);
+  const sinPitch = Math.sin(pitch);
+  return {
+    x,
+    y: point.y * cosPitch - zAfterYaw * sinPitch,
+    z: point.y * sinPitch + zAfterYaw * cosPitch,
+  };
+}
+
+function projectTetraPoint(point: TetraPoint, rotation: { x: number; y: number }) {
+  const rotated = rotateTetraPoint(point, rotation);
+  const cameraDistance = 5.2;
+  const perspective = cameraDistance / (cameraDistance - rotated.z);
+  return {
+    x: 150 + rotated.x * 57 * perspective,
+    y: 122 - rotated.y * 57 * perspective,
+    z: rotated.z,
+  };
+}
+
+function TetraCanvas({ labels, rotation, activeCategory, onVertexSelect }: { labels: Array<{ category: ElementCategory; element: { name: string } }>; rotation: { x: number; y: number }; activeCategory: ElementCategory; onVertexSelect: (category: ElementCategory) => void }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const projected = tetraPoints.map((point) => projectTetraPoint(point, rotation));
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const context = canvas.getContext("2d");
+    if (!context) return;
+    const width = 300;
+    const height = 245;
+    const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = width * pixelRatio;
+    canvas.height = height * pixelRatio;
+    context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+    context.clearRect(0, 0, width, height);
+
+    const faceColors = ["rgba(78, 122, 63, .13)", "rgba(181, 74, 47, .13)", "rgba(168, 120, 28, .13)", "rgba(53, 96, 143, .13)"];
+    tetraFaces
+      .map((face, index) => ({ face, index, depth: face.reduce((sum, pointIndex) => sum + projected[pointIndex].z, 0) / 3 }))
+      .sort((a, b) => a.depth - b.depth)
+      .forEach(({ face, index }) => {
+        context.beginPath();
+        face.forEach((pointIndex, pointPosition) => {
+          const point = projected[pointIndex];
+          if (pointPosition === 0) context.moveTo(point.x, point.y);
+          else context.lineTo(point.x, point.y);
+        });
+        context.closePath();
+        context.fillStyle = faceColors[index];
+        context.fill();
+        context.strokeStyle = "rgba(72, 67, 57, .22)";
+        context.lineWidth = 1;
+        context.stroke();
+      });
+
+    context.lineCap = "round";
+    tetraEdges.forEach(([start, end]) => {
+      context.beginPath();
+      context.moveTo(projected[start].x, projected[start].y);
+      context.lineTo(projected[end].x, projected[end].y);
+      context.strokeStyle = "rgba(41, 39, 35, .78)";
+      context.lineWidth = 2;
+      context.stroke();
+    });
+
+    projected.forEach((point, index) => {
+      const isActive = categoryOrder[index] === activeCategory;
+      context.beginPath();
+      context.arc(point.x, point.y, isActive ? 11 : 9, 0, Math.PI * 2);
+      context.fillStyle = "#eee8dd";
+      context.fill();
+      context.strokeStyle = isActive ? "#292723" : tetraColors[index];
+      context.lineWidth = isActive ? 2 : 1.5;
+      context.stroke();
+      context.beginPath();
+      context.arc(point.x, point.y, 5.5, 0, Math.PI * 2);
+      context.fillStyle = tetraColors[index];
+      context.fill();
+    });
+  }, [activeCategory, projected, rotation]);
+
+  return <div className="tetra-canvas-layer"><canvas ref={canvasRef} className="tetra-canvas" width={300} height={245} aria-label="4要素を立体的に回転できる四面体" />{labels.map(({ category, element }, index) => { const point = projected[index]; return <button key={category} className={`vertex vertex-3d vertex-${index} vertex-${category} ${activeCategory === category ? "active" : ""}`} style={{ left: point.x, top: point.y }} onClick={() => onVertexSelect(category)}><span className="vertex-dot" /><span className="vertex-tag"><small>{categoryLabels[category]}</small>{element.name}</span></button>; })}</div>;
 }
 
 function SuggestionCard({ dish, index, onOpen, onSave, saved }: { dish: Dish; index: number; onOpen: () => void; onSave: () => void; saved: boolean }) {
