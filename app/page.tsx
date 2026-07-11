@@ -15,6 +15,7 @@ import {
   type ElementCategory,
   type User,
 } from "./recipe-data";
+import TetraTestScreen from "./tetra-test";
 
 type Screen = "home" | "tetra" | "explore" | "record" | "taste";
 type Overlay = "detail" | "record" | "pro" | null;
@@ -374,6 +375,9 @@ export default function Home() {
   if (!hydrated) {
     return <div className="boot-screen"><span className="boot-mark">R</span><span>味の地図をひらいています</span></div>;
   }
+
+  const tetraTestMode = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("test") === "tetra-v2";
+  if (tetraTestMode) return <TetraTestScreen />;
 
   if (!user.onboardingCompleted) {
     return (
