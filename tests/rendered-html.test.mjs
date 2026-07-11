@@ -26,11 +26,12 @@ test("server-renders the recipe tetrahedron shell", async () => {
 });
 
 test("keeps the product metadata and mobile entry points", async () => {
-  const [page, layout, css, manifest] = await Promise.all([
+  const [page, layout, css, manifest, recipeData] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
     readFile(new URL("../public/manifest.webmanifest", import.meta.url), "utf8"),
+    readFile(new URL("../app/recipe-data.ts", import.meta.url), "utf8"),
   ]);
 
   assert.match(page, /食材と気分から探す/);
@@ -52,6 +53,9 @@ test("keeps the product metadata and mobile entry points", async () => {
   assert.match(page, /四面体上のご近所/);
   assert.match(page, /今回の探索点/);
   assert.match(page, /tasteScoreFromLogs/);
+  const coreDishes = recipeData.split("const coreDishes: Dish[] = [")[1].split("type SupplementalDishSeed")[0];
+  const supplementalDishes = recipeData.split("const supplementalDishSeeds: SupplementalDishSeed[] = [")[1].split("function supplementalDishFromSeed")[0];
+  assert.equal((coreDishes.match(/^    id: /gm) ?? []).length + (supplementalDishes.match(/^  \{ id:/gm) ?? []).length, 100);
   assert.match(layout, /料理の四面体 — 食の博物誌/);
   assert.match(layout, /manifest:\s*"\/manifest\.webmanifest"/);
   assert.match(css, /position:\s*fixed/);

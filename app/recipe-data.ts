@@ -265,7 +265,7 @@ export const cookingElements: Record<ElementCategory, CookingElement[]> = {
   ],
 };
 
-export const dishes: Dish[] = [
+const coreDishes: Dish[] = [
   {
     id: "lemon-herb-grilled-chicken",
     name: "レモンとハーブのグリルチキン",
@@ -709,6 +709,116 @@ export const dishes: Dish[] = [
     alternatives: ["豆腐", "レンズ豆", "ヨーグルト", "ほうれん草"],
   },
 ];
+
+type SupplementalDishSeed = {
+  id: string;
+  name: string;
+  foodElement: string;
+  cookingMethodElement: string;
+  seasoningElement: string;
+  textureElement: string;
+  adventureLevel: AdventureLevel;
+  origin: string;
+  cookingTime: string;
+  difficulty: string;
+};
+
+const supplementalDishSeeds: SupplementalDishSeed[] = [
+  { id: "chicken-rosemary-pan", name: "鶏肉のローズマリー焼き", foodElement: "chicken", cookingMethodElement: "grill", seasoningElement: "salt", textureElement: "roasty", adventureLevel: "定番", origin: "洋食", cookingTime: "22分", difficulty: "かんたん" },
+  { id: "chicken-tomato-soup", name: "鶏肉とトマトの煮込み", foodElement: "chicken", cookingMethodElement: "simmer", seasoningElement: "umami", textureElement: "moist", adventureLevel: "定番", origin: "洋食", cookingTime: "30分", difficulty: "ふつう" },
+  { id: "chicken-ginger-steam", name: "鶏肉のしょうが蒸し", foodElement: "chicken", cookingMethodElement: "steam", seasoningElement: "salt", textureElement: "fresh", adventureLevel: "定番", origin: "和食", cookingTime: "20分", difficulty: "かんたん" },
+  { id: "chicken-five-spice", name: "五香粉チキン", foodElement: "chicken", cookingMethodElement: "fry", seasoningElement: "spice", textureElement: "crunchy", adventureLevel: "意外", origin: "中華", cookingTime: "24分", difficulty: "ふつう" },
+  { id: "chicken-citrus-salad", name: "鶏肉と柑橘のサラダ", foodElement: "chicken", cookingMethodElement: "raw", seasoningElement: "sour", textureElement: "fresh", adventureLevel: "ちょっと冒険", origin: "洋食", cookingTime: "18分", difficulty: "かんたん" },
+  { id: "chicken-tandoori-roast", name: "簡単タンドリーチキン", foodElement: "chicken", cookingMethodElement: "grill", seasoningElement: "spice", textureElement: "rich", adventureLevel: "ちょっと冒険", origin: "アジア", cookingTime: "35分", difficulty: "ふつう" },
+  { id: "chicken-sichuan-stir", name: "鶏肉の花椒炒め", foodElement: "chicken", cookingMethodElement: "stir", seasoningElement: "spicy", textureElement: "roasty", adventureLevel: "意外", origin: "中華", cookingTime: "18分", difficulty: "かんたん" },
+  { id: "chicken-herb-poach", name: "鶏むね肉のハーブゆで", foodElement: "chicken", cookingMethodElement: "simmer", seasoningElement: "sour", textureElement: "moist", adventureLevel: "定番", origin: "洋食", cookingTime: "25分", difficulty: "かんたん" },
+  { id: "chicken-coconut-grill", name: "鶏肉のココナッツ焼き", foodElement: "chicken", cookingMethodElement: "grill", seasoningElement: "spice", textureElement: "roasty", adventureLevel: "意外", origin: "アジア", cookingTime: "28分", difficulty: "ふつう" },
+  { id: "chicken-olive-simmer", name: "鶏肉とオリーブの白ワイン煮", foodElement: "chicken", cookingMethodElement: "simmer", seasoningElement: "salt", textureElement: "rich", adventureLevel: "ちょっと冒険", origin: "洋食", cookingTime: "35分", difficulty: "ふつう" },
+  { id: "pork-kimchi-stew", name: "豚肉とキムチの煮込み", foodElement: "pork", cookingMethodElement: "simmer", seasoningElement: "spicy", textureElement: "rich", adventureLevel: "ちょっと冒険", origin: "アジア", cookingTime: "30分", difficulty: "かんたん" },
+  { id: "pork-apple-roast", name: "豚肉とりんごのロースト", foodElement: "pork", cookingMethodElement: "grill", seasoningElement: "sweet-savory", textureElement: "roasty", adventureLevel: "意外", origin: "洋食", cookingTime: "32分", difficulty: "ふつう" },
+  { id: "pork-cabbage-stir", name: "豚肉とキャベツの塩炒め", foodElement: "pork", cookingMethodElement: "stir", seasoningElement: "salt", textureElement: "crunchy", adventureLevel: "定番", origin: "中華", cookingTime: "15分", difficulty: "かんたん" },
+  { id: "pork-herb-steam", name: "豚肉の香草蒸し", foodElement: "pork", cookingMethodElement: "steam", seasoningElement: "umami", textureElement: "moist", adventureLevel: "ちょっと冒険", origin: "洋食", cookingTime: "24分", difficulty: "ふつう" },
+  { id: "pork-spicy-fry", name: "豚肉のスパイシー唐揚げ", foodElement: "pork", cookingMethodElement: "fry", seasoningElement: "spicy", textureElement: "crunchy", adventureLevel: "意外", origin: "中華", cookingTime: "26分", difficulty: "ふつう" },
+  { id: "pork-orange-simmer", name: "豚肉のオレンジ煮", foodElement: "pork", cookingMethodElement: "simmer", seasoningElement: "sour", textureElement: "moist", adventureLevel: "意外", origin: "洋食", cookingTime: "32分", difficulty: "ふつう" },
+  { id: "pork-pepper-grill", name: "豚肉の黒こしょう焼き", foodElement: "pork", cookingMethodElement: "grill", seasoningElement: "salt", textureElement: "roasty", adventureLevel: "定番", origin: "洋食", cookingTime: "18分", difficulty: "かんたん" },
+  { id: "pork-miso-simmer", name: "豚肉と大根の味噌煮", foodElement: "pork", cookingMethodElement: "simmer", seasoningElement: "sweet-savory", textureElement: "rich", adventureLevel: "定番", origin: "和食", cookingTime: "40分", difficulty: "ふつう" },
+  { id: "pork-larb-stir", name: "豚ひき肉のラープ風", foodElement: "pork", cookingMethodElement: "stir", seasoningElement: "sour", textureElement: "fresh", adventureLevel: "意外", origin: "アジア", cookingTime: "20分", difficulty: "かんたん" },
+  { id: "fish-tomato-braise", name: "魚のトマト蒸し煮", foodElement: "fish", cookingMethodElement: "simmer", seasoningElement: "sour", textureElement: "moist", adventureLevel: "定番", origin: "洋食", cookingTime: "25分", difficulty: "ふつう" },
+  { id: "fish-coconut-steam", name: "白身魚のココナッツ蒸し", foodElement: "fish", cookingMethodElement: "steam", seasoningElement: "spice", textureElement: "fresh", adventureLevel: "意外", origin: "アジア", cookingTime: "22分", difficulty: "ふつう" },
+  { id: "fish-citrus-raw", name: "魚の柑橘セビーチェ", foodElement: "fish", cookingMethodElement: "raw", seasoningElement: "sour", textureElement: "fresh", adventureLevel: "意外", origin: "洋食", cookingTime: "15分", difficulty: "かんたん" },
+  { id: "fish-spice-fry", name: "魚のスパイスフライ", foodElement: "fish", cookingMethodElement: "fry", seasoningElement: "spice", textureElement: "crunchy", adventureLevel: "ちょっと冒険", origin: "アジア", cookingTime: "25分", difficulty: "ふつう" },
+  { id: "fish-herb-grill", name: "魚のハーブ塩焼き", foodElement: "fish", cookingMethodElement: "grill", seasoningElement: "salt", textureElement: "roasty", adventureLevel: "定番", origin: "洋食", cookingTime: "20分", difficulty: "かんたん" },
+  { id: "fish-miso-simmer", name: "魚の味噌煮", foodElement: "fish", cookingMethodElement: "simmer", seasoningElement: "sweet-savory", textureElement: "moist", adventureLevel: "定番", origin: "和食", cookingTime: "30分", difficulty: "ふつう" },
+  { id: "fish-salsa-raw", name: "魚のサルサ仕立て", foodElement: "fish", cookingMethodElement: "raw", seasoningElement: "sour", textureElement: "fresh", adventureLevel: "意外", origin: "洋食", cookingTime: "15分", difficulty: "かんたん" },
+  { id: "fish-blackpepper-stir", name: "魚と野菜の黒こしょう炒め", foodElement: "fish", cookingMethodElement: "stir", seasoningElement: "spicy", textureElement: "roasty", adventureLevel: "ちょっと冒険", origin: "中華", cookingTime: "18分", difficulty: "かんたん" },
+  { id: "fish-ginger-steam", name: "魚のしょうがねぎ蒸し", foodElement: "fish", cookingMethodElement: "steam", seasoningElement: "umami", textureElement: "moist", adventureLevel: "定番", origin: "中華", cookingTime: "20分", difficulty: "かんたん" },
+  { id: "fish-curry-simmer", name: "魚のココナッツカレー", foodElement: "fish", cookingMethodElement: "simmer", seasoningElement: "spice", textureElement: "rich", adventureLevel: "ちょっと冒険", origin: "アジア", cookingTime: "35分", difficulty: "ふつう" },
+  { id: "tofu-maple-grill", name: "豆腐のメープル味噌焼き", foodElement: "tofu", cookingMethodElement: "grill", seasoningElement: "sweet-savory", textureElement: "roasty", adventureLevel: "意外", origin: "洋食", cookingTime: "20分", difficulty: "かんたん" },
+  { id: "tofu-spicy-simmer", name: "豆腐の麻辣煮", foodElement: "tofu", cookingMethodElement: "simmer", seasoningElement: "spicy", textureElement: "rich", adventureLevel: "意外", origin: "中華", cookingTime: "25分", difficulty: "ふつう" },
+  { id: "tofu-herb-raw", name: "豆腐のハーブ冷菜", foodElement: "tofu", cookingMethodElement: "raw", seasoningElement: "salt", textureElement: "fresh", adventureLevel: "ちょっと冒険", origin: "洋食", cookingTime: "10分", difficulty: "かんたん" },
+  { id: "tofu-coconut-fry", name: "豆腐のココナッツ衣揚げ", foodElement: "tofu", cookingMethodElement: "fry", seasoningElement: "spice", textureElement: "crunchy", adventureLevel: "意外", origin: "アジア", cookingTime: "24分", difficulty: "ふつう" },
+  { id: "tofu-miso-steam", name: "豆腐の味噌だれ蒸し", foodElement: "tofu", cookingMethodElement: "steam", seasoningElement: "umami", textureElement: "moist", adventureLevel: "定番", origin: "和食", cookingTime: "18分", difficulty: "かんたん" },
+  { id: "tofu-sesame-stir", name: "豆腐と青菜のごま炒め", foodElement: "tofu", cookingMethodElement: "stir", seasoningElement: "umami", textureElement: "fresh", adventureLevel: "定番", origin: "中華", cookingTime: "15分", difficulty: "かんたん" },
+  { id: "tofu-tomato-grill", name: "豆腐とトマトの焼き皿", foodElement: "tofu", cookingMethodElement: "grill", seasoningElement: "sour", textureElement: "roasty", adventureLevel: "ちょっと冒険", origin: "洋食", cookingTime: "22分", difficulty: "かんたん" },
+  { id: "tofu-sweet-simmer", name: "豆腐の甘辛そぼろ煮", foodElement: "tofu", cookingMethodElement: "simmer", seasoningElement: "sweet-savory", textureElement: "moist", adventureLevel: "定番", origin: "和食", cookingTime: "25分", difficulty: "かんたん" },
+  { id: "tofu-lime-raw", name: "豆腐のライム香味和え", foodElement: "tofu", cookingMethodElement: "raw", seasoningElement: "sour", textureElement: "fresh", adventureLevel: "意外", origin: "アジア", cookingTime: "10分", difficulty: "かんたん" },
+  { id: "egg-spinach-stir", name: "卵とほうれん草の炒めもの", foodElement: "egg", cookingMethodElement: "stir", seasoningElement: "salt", textureElement: "fluffy", adventureLevel: "定番", origin: "中華", cookingTime: "12分", difficulty: "かんたん" },
+  { id: "egg-curry-fry", name: "卵のカレー衣フライ", foodElement: "egg", cookingMethodElement: "fry", seasoningElement: "spice", textureElement: "crunchy", adventureLevel: "意外", origin: "洋食", cookingTime: "20分", difficulty: "ふつう" },
+  { id: "egg-herb-steam", name: "卵のハーブ蒸し", foodElement: "egg", cookingMethodElement: "steam", seasoningElement: "umami", textureElement: "fluffy", adventureLevel: "ちょっと冒険", origin: "洋食", cookingTime: "18分", difficulty: "かんたん" },
+  { id: "egg-mushroom-simmer", name: "卵ときのこのだし煮", foodElement: "egg", cookingMethodElement: "simmer", seasoningElement: "umami", textureElement: "moist", adventureLevel: "定番", origin: "和食", cookingTime: "20分", difficulty: "かんたん" },
+  { id: "egg-salsa-grill", name: "卵のサルサ焼き", foodElement: "egg", cookingMethodElement: "grill", seasoningElement: "sour", textureElement: "roasty", adventureLevel: "意外", origin: "洋食", cookingTime: "17分", difficulty: "かんたん" },
+  { id: "egg-sweet-stir", name: "卵の甘辛照り炒め", foodElement: "egg", cookingMethodElement: "stir", seasoningElement: "sweet-savory", textureElement: "fluffy", adventureLevel: "定番", origin: "和食", cookingTime: "14分", difficulty: "かんたん" },
+  { id: "egg-spicy-simmer", name: "卵のチリスープ煮", foodElement: "egg", cookingMethodElement: "simmer", seasoningElement: "spicy", textureElement: "moist", adventureLevel: "ちょっと冒険", origin: "中華", cookingTime: "20分", difficulty: "かんたん" },
+  { id: "egg-cheese-grill", name: "卵とチーズの香ばし焼き", foodElement: "egg", cookingMethodElement: "grill", seasoningElement: "salt", textureElement: "rich", adventureLevel: "定番", origin: "洋食", cookingTime: "20分", difficulty: "かんたん" },
+  { id: "mushroom-teriyaki-grill", name: "きのこの照り焼き", foodElement: "mushroom", cookingMethodElement: "grill", seasoningElement: "sweet-savory", textureElement: "roasty", adventureLevel: "定番", origin: "和食", cookingTime: "15分", difficulty: "かんたん" },
+  { id: "mushroom-coconut-simmer", name: "きのこのココナッツ煮", foodElement: "mushroom", cookingMethodElement: "simmer", seasoningElement: "spice", textureElement: "rich", adventureLevel: "意外", origin: "アジア", cookingTime: "25分", difficulty: "かんたん" },
+  { id: "mushroom-lemon-steam", name: "きのこのレモン蒸し", foodElement: "mushroom", cookingMethodElement: "steam", seasoningElement: "sour", textureElement: "fresh", adventureLevel: "ちょっと冒険", origin: "洋食", cookingTime: "15分", difficulty: "かんたん" },
+  { id: "mushroom-spice-fry", name: "きのこのスパイスフリット", foodElement: "mushroom", cookingMethodElement: "fry", seasoningElement: "spice", textureElement: "crunchy", adventureLevel: "意外", origin: "洋食", cookingTime: "20分", difficulty: "ふつう" },
+  { id: "mushroom-garlic-stir", name: "きのこのにんにく炒め", foodElement: "mushroom", cookingMethodElement: "stir", seasoningElement: "salt", textureElement: "roasty", adventureLevel: "定番", origin: "洋食", cookingTime: "12分", difficulty: "かんたん" },
+  { id: "mushroom-miso-grill", name: "きのこの味噌焼き", foodElement: "mushroom", cookingMethodElement: "grill", seasoningElement: "umami", textureElement: "moist", adventureLevel: "定番", origin: "和食", cookingTime: "18分", difficulty: "かんたん" },
+  { id: "mushroom-herb-steam", name: "きのこのハーブ蒸し", foodElement: "mushroom", cookingMethodElement: "steam", seasoningElement: "salt", textureElement: "moist", adventureLevel: "ちょっと冒険", origin: "洋食", cookingTime: "16分", difficulty: "かんたん" },
+  { id: "mushroom-vinegar-simmer", name: "きのこの黒酢煮", foodElement: "mushroom", cookingMethodElement: "simmer", seasoningElement: "sour", textureElement: "rich", adventureLevel: "意外", origin: "中華", cookingTime: "22分", difficulty: "かんたん" },
+  { id: "mushroom-curry-fry", name: "きのこのカレー揚げ", foodElement: "mushroom", cookingMethodElement: "fry", seasoningElement: "spicy", textureElement: "crunchy", adventureLevel: "意外", origin: "洋食", cookingTime: "20分", difficulty: "かんたん" },
+  { id: "eggplant-tomato-simmer", name: "なすとトマトの煮込み", foodElement: "eggplant", cookingMethodElement: "simmer", seasoningElement: "umami", textureElement: "rich", adventureLevel: "定番", origin: "洋食", cookingTime: "30分", difficulty: "かんたん" },
+  { id: "eggplant-spice-grill", name: "なすのスパイス焼き", foodElement: "eggplant", cookingMethodElement: "grill", seasoningElement: "spice", textureElement: "roasty", adventureLevel: "ちょっと冒険", origin: "アジア", cookingTime: "22分", difficulty: "かんたん" },
+  { id: "eggplant-lemon-fry", name: "なすのレモンフリット", foodElement: "eggplant", cookingMethodElement: "fry", seasoningElement: "sour", textureElement: "crunchy", adventureLevel: "意外", origin: "洋食", cookingTime: "24分", difficulty: "ふつう" },
+  { id: "eggplant-miso-steam", name: "なすの味噌蒸し", foodElement: "eggplant", cookingMethodElement: "steam", seasoningElement: "sweet-savory", textureElement: "moist", adventureLevel: "定番", origin: "和食", cookingTime: "18分", difficulty: "かんたん" },
+  { id: "eggplant-yogurt-simmer", name: "なすのヨーグルト煮", foodElement: "eggplant", cookingMethodElement: "simmer", seasoningElement: "sour", textureElement: "rich", adventureLevel: "意外", origin: "アジア", cookingTime: "28分", difficulty: "ふつう" },
+  { id: "eggplant-garlic-stir", name: "なすのにんにく炒め", foodElement: "eggplant", cookingMethodElement: "stir", seasoningElement: "spicy", textureElement: "moist", adventureLevel: "定番", origin: "中華", cookingTime: "15分", difficulty: "かんたん" },
+  { id: "eggplant-coconut-simmer", name: "なすのココナッツカレー煮", foodElement: "eggplant", cookingMethodElement: "simmer", seasoningElement: "spice", textureElement: "rich", adventureLevel: "意外", origin: "アジア", cookingTime: "32分", difficulty: "ふつう" },
+  { id: "eggplant-salsa-grill", name: "なすの焼きサルサ", foodElement: "eggplant", cookingMethodElement: "grill", seasoningElement: "sour", textureElement: "fresh", adventureLevel: "ちょっと冒険", origin: "洋食", cookingTime: "20分", difficulty: "かんたん" },
+  { id: "eggplant-panko-fry", name: "なすのパン粉焼き", foodElement: "eggplant", cookingMethodElement: "fry", seasoningElement: "salt", textureElement: "crunchy", adventureLevel: "定番", origin: "洋食", cookingTime: "25分", difficulty: "ふつう" },
+  { id: "potato-tomato-simmer", name: "じゃがいものトマト煮", foodElement: "potato", cookingMethodElement: "simmer", seasoningElement: "sour", textureElement: "moist", adventureLevel: "定番", origin: "洋食", cookingTime: "30分", difficulty: "かんたん" },
+  { id: "potato-rosemary-grill", name: "じゃがいものローズマリー焼き", foodElement: "potato", cookingMethodElement: "grill", seasoningElement: "salt", textureElement: "roasty", adventureLevel: "定番", origin: "洋食", cookingTime: "28分", difficulty: "かんたん" },
+  { id: "potato-spice-fry", name: "じゃがいものスパイスフライ", foodElement: "potato", cookingMethodElement: "fry", seasoningElement: "spice", textureElement: "crunchy", adventureLevel: "意外", origin: "アジア", cookingTime: "25分", difficulty: "かんたん" },
+  { id: "potato-sour-steam", name: "じゃがいもの酢蒸し", foodElement: "potato", cookingMethodElement: "steam", seasoningElement: "sour", textureElement: "fresh", adventureLevel: "意外", origin: "中華", cookingTime: "22分", difficulty: "かんたん" },
+  { id: "potato-cheese-grill", name: "じゃがいものチーズ焼き", foodElement: "potato", cookingMethodElement: "grill", seasoningElement: "umami", textureElement: "rich", adventureLevel: "定番", origin: "洋食", cookingTime: "30分", difficulty: "かんたん" },
+  { id: "potato-coconut-simmer", name: "じゃがいものココナッツ煮", foodElement: "potato", cookingMethodElement: "simmer", seasoningElement: "spice", textureElement: "moist", adventureLevel: "意外", origin: "アジア", cookingTime: "30分", difficulty: "かんたん" },
+  { id: "potato-cumin-stir", name: "じゃがいものクミン炒め", foodElement: "potato", cookingMethodElement: "stir", seasoningElement: "spice", textureElement: "roasty", adventureLevel: "ちょっと冒険", origin: "アジア", cookingTime: "20分", difficulty: "かんたん" },
+  { id: "potato-herb-steam", name: "じゃがいものハーブ蒸し", foodElement: "potato", cookingMethodElement: "steam", seasoningElement: "salt", textureElement: "moist", adventureLevel: "定番", origin: "洋食", cookingTime: "22分", difficulty: "かんたん" },
+  { id: "potato-sesame-fry", name: "じゃがいものごま揚げ", foodElement: "potato", cookingMethodElement: "fry", seasoningElement: "sweet-savory", textureElement: "crunchy", adventureLevel: "意外", origin: "和食", cookingTime: "25分", difficulty: "かんたん" },
+  { id: "potato-chili-grill", name: "じゃがいものチリ焼き", foodElement: "potato", cookingMethodElement: "grill", seasoningElement: "spicy", textureElement: "roasty", adventureLevel: "ちょっと冒険", origin: "洋食", cookingTime: "26分", difficulty: "かんたん" },
+];
+
+function supplementalDishFromSeed(seed: SupplementalDishSeed): Dish {
+  const elementName = (category: ElementCategory, id: string) => cookingElements[category].find((element) => element.id === id)?.name ?? id;
+  const food = elementName("food", seed.foodElement);
+  const method = elementName("method", seed.cookingMethodElement);
+  const seasoning = elementName("seasoning", seed.seasoningElement);
+  const texture = elementName("texture", seed.textureElement);
+  return {
+    ...seed,
+    description: `${food}を${method}で仕上げ、${seasoning}と${texture}を重ねた${seed.origin}の一皿。`,
+    ingredients: [food, seasoning, "香味野菜", "油またはだし"],
+    steps: [`${food}を食べやすく下ごしらえする`, `${method}で素材の表情をつくる`, `${seasoning}で味を整え、${texture}に仕上げる`],
+    reasonWhyItWorks: `${food}の持ち味に${seasoning}を合わせ、${method}が${texture}を引き出します。`,
+    alternatives: ["鶏肉", "豆腐", "きのこ", "旬の野菜"],
+  };
+}
+
+const supplementalDishes = supplementalDishSeeds.map(supplementalDishFromSeed);
+
+export const dishes: Dish[] = [...coreDishes, ...supplementalDishes];
 
 export const initialChallenges: Challenge[] = [
   {
