@@ -310,7 +310,7 @@ export default function Home() {
   }
 
   const tetraTestMode = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("test") === "tetra-v2";
-  if (tetraTestMode) return <TetraTestScreen />;
+  if (tetraTestMode) return <TetraTestScreen variant="test" />;
 
   if (!user.onboardingCompleted) {
     return (
@@ -427,7 +427,7 @@ export default function Home() {
             savedDishIds={savedDishIds}
           />
         )}
-        {showMain && screen === "tetra" && <TetraTestScreen />}
+        {showMain && screen === "tetra" && <TetraTestScreen variant="production" savedDishIds={savedDishIds} onSave={saveDish} onCook={startRecord} />}
         {showMain && screen === "explore" && (
           <ExploreScreen
             challenges={challenges}

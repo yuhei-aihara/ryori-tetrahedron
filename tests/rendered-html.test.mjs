@@ -42,7 +42,8 @@ test("keeps the product metadata and mobile entry points", async () => {
   assert.match(page, /味覚マップに反映しました/);
   assert.match(page, /料理体験チャレンジ/);
   assert.match(page, /RYORI PRO/);
-  assert.match(page, /screen === "tetra" && <TetraTestScreen \/>/);
+  assert.match(page, /screen === "tetra" && <TetraTestScreen variant="production"/);
+  assert.match(page, /<TetraTestScreen variant="test" \/>/);
   assert.match(page, /tasteScoreFromLogs/);
   assert.match(tetraTest, /今日は何を/);
   assert.match(tetraTest, /いま決まっていることから探す/);
@@ -56,9 +57,16 @@ test("keeps the product metadata and mobile entry points", async () => {
   assert.match(tetraTest, /もっと香ばしく/);
   assert.match(tetraTest, /setPointerCapture/);
   assert.match(tetraTest, /料理の地図で見る/);
+  assert.match(tetraTest, /flowStep === "choices"/);
+  assert.match(tetraTest, /flowStep === "refine"/);
+  assert.match(tetraTest, /入口を選び直す/);
+  assert.match(tetraTest, /次の条件をひとつ選ぶ/);
   const coreDishes = recipeData.split("const coreDishes: Dish[] = [")[1].split("type SupplementalDishSeed")[0];
   const supplementalDishes = recipeData.split("const supplementalDishSeeds: SupplementalDishSeed[] = [")[1].split("function supplementalDishFromSeed")[0];
   assert.equal((coreDishes.match(/^    id: /gm) ?? []).length + (supplementalDishes.match(/^  \{ id:/gm) ?? []).length, 100);
+  assert.match(recipeData, /Array\.from\(\{ length: 400 \}/);
+  assert.match(recipeData, /const generatedDishes = generatedDishSeeds\.map\(supplementalDishFromSeed\)/);
+  assert.match(recipeData, /\.\.\.generatedDishes/);
   assert.match(layout, /料理の四面体 — 食の博物誌/);
   assert.match(layout, /manifest:\s*"\/manifest\.webmanifest"/);
   assert.match(css, /position:\s*fixed/);

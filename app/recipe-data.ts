@@ -800,6 +800,28 @@ const supplementalDishSeeds: SupplementalDishSeed[] = [
   { id: "potato-chili-grill", name: "じゃがいものチリ焼き", foodElement: "potato", cookingMethodElement: "grill", seasoningElement: "spicy", textureElement: "roasty", adventureLevel: "ちょっと冒険", origin: "洋食", cookingTime: "26分", difficulty: "かんたん" },
 ];
 
+const generatedDishStyles = ["香味仕立て", "野菜添え", "温かい一皿", "ハーブ風味", "スパイスの皿", "家庭風", "季節の小皿", "食堂仕立て"];
+const generatedOrigins = ["和食", "洋食", "中華", "アジア"];
+const generatedDishSeeds: SupplementalDishSeed[] = Array.from({ length: 400 }, (_, index) => {
+  const food = cookingElements.food[index % cookingElements.food.length];
+  const method = cookingElements.method[(index * 3 + 1) % cookingElements.method.length];
+  const seasoning = cookingElements.seasoning[(index * 5 + 2) % cookingElements.seasoning.length];
+  const texture = cookingElements.texture[(index * 7 + 3) % cookingElements.texture.length];
+  const adventureLevel: AdventureLevel = index % 9 === 0 ? "意外" : index % 3 === 0 ? "ちょっと冒険" : "定番";
+  return {
+    id: `generated-${String(index + 1).padStart(3, "0")}`,
+    name: `${food.name}の${method.name}${generatedDishStyles[index % generatedDishStyles.length]}`,
+    foodElement: food.id,
+    cookingMethodElement: method.id,
+    seasoningElement: seasoning.id,
+    textureElement: texture.id,
+    adventureLevel,
+    origin: generatedOrigins[(index + Math.floor(index / 8)) % generatedOrigins.length],
+    cookingTime: `${12 + ((index * 7) % 29)}分`,
+    difficulty: index % 5 === 0 ? "ふつう" : "かんたん",
+  };
+});
+
 function supplementalDishFromSeed(seed: SupplementalDishSeed): Dish {
   const elementName = (category: ElementCategory, id: string) => cookingElements[category].find((element) => element.id === id)?.name ?? id;
   const food = elementName("food", seed.foodElement);
@@ -817,8 +839,9 @@ function supplementalDishFromSeed(seed: SupplementalDishSeed): Dish {
 }
 
 const supplementalDishes = supplementalDishSeeds.map(supplementalDishFromSeed);
+const generatedDishes = generatedDishSeeds.map(supplementalDishFromSeed);
 
-export const dishes: Dish[] = [...coreDishes, ...supplementalDishes];
+export const dishes: Dish[] = [...coreDishes, ...supplementalDishes, ...generatedDishes];
 
 export const initialChallenges: Challenge[] = [
   {

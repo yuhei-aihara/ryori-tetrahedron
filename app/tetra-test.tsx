@@ -9,6 +9,8 @@ import {
 
 type EntranceId = "food" | "method" | "type" | "region" | "mood" | "occasion";
 type MapMode = "2d" | "3d";
+type TetraFlowStep = "entrances" | "choices" | "refine";
+type TetraScreenVariant = "test" | "production";
 type TestCondition = {
   id: string;
   kind: EntranceId | "query";
@@ -221,14 +223,15 @@ function TestMap3D({ selected, related, onSelect }: { selected: Dish; related: D
   </svg><div className="test-3d-legend"><span>火・水・空気・油</span><span>選択料理 1皿 + 関連料理 {related.length}皿</span></div></div>;
 }
 
-function TestRecipePanel({ dish, onClose }: { dish: Dish; onClose: () => void }) {
-  return <div className="test-recipe-panel" role="dialog" aria-label={`${dish.name}のレシピ`}><div className="test-recipe-panel-heading"><div><span className="test-eyebrow">レシピを見る</span><h2>{dish.name}</h2></div><button className="test-close-button" onClick={onClose}>閉じる</button></div><p>{dish.description}</p><div className="test-recipe-meta"><span>{dish.cookingTime}</span><span>{dish.difficulty}</span><span>{dish.origin}</span></div><div className="test-recipe-grid"><div><b>材料</b><p>{dish.ingredients.join("・")}</p></div><div><b>手順</b><ol>{dish.steps.slice(0, 3).map((step) => <li key={step}>{step}</li>)}</ol></div></div></div>;
+function TestRecipePanel({ dish, onClose, saved, onSave, onCook }: { dish: Dish; onClose: () => void; saved: boolean; onSave?: () => void; onCook?: () => void }) {
+  return <div className="test-recipe-panel" role="dialog" aria-label={`${dish.name}のレシピ`}><div className="test-recipe-panel-heading"><div><span className="test-eyebrow">レシピを見る</span><h2>{dish.name}</h2></div><button className="test-close-button" onClick={onClose}>閉じる</button></div><p>{dish.description}</p><div className="test-recipe-meta"><span>{dish.cookingTime}</span><span>{dish.difficulty}</span><span>{dish.origin}</span></div><div className="test-recipe-grid"><div><b>材料</b><p>{dish.ingredients.join("・")}</p></div><div><b>手順</b><ol>{dish.steps.slice(0, 3).map((step) => <li key={step}>{step}</li>)}</ol></div></div>{(onSave || onCook) && <div className="test-recipe-actions">{onCook && <button className="test-recipe-cook" onClick={onCook}>作ってみる</button>}{onSave && <button className="test-recipe-save" onClick={onSave}>{saved ? "保存済み" : "保存する"}</button>}</div>}</div>;
 }
 
-export default function TetraTestScreen() {
+export default function TetraTestScreen({ variant = "production", savedDishIds = [], onSave, onCook }: { variant?: TetraScreenVariant; savedDishIds?: string[]; onSave?: (dish: Dish) => void; onCook?: (dish: Dish) => void }) {
   const [query, setQuery] = useState("");
   const [conditions, setConditions] = useState<TestCondition[]>([]);
   const [activeEntrance, setActiveEntrance] = useState<EntranceId>("food");
+  const [flowStep, setFlowStep] = useState<TetraFlowStep>("entrances");
   const [selectedDishId, setSelectedDishId] = useState<string | null>(null);
   const [mapMode, setMapMode] = useState<MapMode>("2d");
   const [recipeDish, setRecipeDish] = useState<Dish | null>(null);
@@ -258,20 +261,34 @@ export default function TetraTestScreen() {
     return allChoices.filter((choice, index, choices) => !usedKinds.has(choice.kind) && choices.findIndex((item) => item.id === choice.id && item.kind === choice.kind) === index).map((choice) => ({ choice, count: dishes.filter((dish) => [...conditions.filter((condition) => condition.kind !== choice.kind), choice].every((condition) => condition.matches(dish))).length })).sort((a, b) => b.count - a.count).slice(0, 4);
   }, [conditions]);
 
-  const addCondition = (condition: TestCondition) => {
+  const addCondition = (condition: TestCondition, nextStep: TetraFlowStep = "refine") => {
     setConditions((current) => [...current.filter((item) => item.kind !== condition.kind), condition]);
     setSelectedDishId(null);
-    if (condition.kind !== "query") setActiveEntrance(condition.kind);
+    if (condition.kind !== "query") {
+      setActiveEntrance(condition.kind);
+      setFlowStep(nextStep);
+    } else {
+      setFlowStep(nextStep);
+    }
   };
   const submitQuery = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const condition = conditionForQuery(query);
-    if (condition) addCondition(condition);
+    if (condition) addCondition(condition, "entrances");
   };
   const removeCondition = (condition: TestCondition) => {
     setConditions((current) => current.filter((item) => item.id !== condition.id));
     if (condition.kind === "query") setQuery("");
+    if (condition.kind !== "query") {
+      setActiveEntrance(condition.kind);
+      setFlowStep("choices");
+    }
   };
+  const openEntrance = (entrance: EntranceId) => {
+    setActiveEntrance(entrance);
+    setFlowStep("choices");
+  };
+  const goBackInFlow = () => setFlowStep((current) => current === "refine" ? "choices" : "entrances");
   const focusMap = (dish: Dish) => {
     setSelectedDishId(dish.id);
     window.setTimeout(() => document.getElementById("test-map")?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
@@ -279,17 +296,17 @@ export default function TetraTestScreen() {
   const pathItems = [...conditions.filter((condition) => condition.kind !== "query").map((condition) => condition.label), ...(selectedDish ? [selectedDish.name] : [])];
 
   return <main className="tetra-test-shell"><div className="tetra-test-page">
-    <header className="tetra-test-header"><div><span className="test-eyebrow">RYORI / TETRA V2 · TEST</span><a className="test-back-link" href={typeof window === "undefined" ? "/" : window.location.pathname}>現行版へ戻る</a></div><h1>今日は何を<br /><em>作りたいですか？</em></h1><p>料理名でも、食材でも、国でも、食感でも。決まっているところから歩きはじめます。</p><form className="test-search-form" onSubmit={submitQuery}><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="例：じゃがいも、ガレット、韓国、香ばしい" aria-label="料理を検索" /><button type="submit">探す</button></form><div className="test-header-conditions"><span className="test-eyebrow">CURRENT SEARCH</span><div className="test-condition-chips">{conditions.length ? conditions.map((condition) => <button key={condition.id} className="test-condition-chip" onClick={() => removeCondition(condition)}>{condition.label} <b>×</b></button>) : <span className="test-empty-condition">条件はあとから追加できます</span>}</div></div></header>
+    <header className="tetra-test-header"><div><span className="test-eyebrow">{variant === "test" ? "RYORI / TETRA V2 · TEST" : "RYORI / 料理の地図"}</span>{variant === "test" && <a className="test-back-link" href={typeof window === "undefined" ? "/" : window.location.pathname}>現行版へ戻る</a>}</div><h1>今日は何を<br /><em>作りたいですか？</em></h1><p>料理名でも、食材でも、国でも、食感でも。決まっているところから歩きはじめます。</p><form className="test-search-form" onSubmit={submitQuery}><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="例：じゃがいも、ガレット、韓国、香ばしい" aria-label="料理を検索" /><button type="submit">探す</button></form><div className="test-header-conditions"><span className="test-eyebrow">CURRENT SEARCH</span><div className="test-condition-chips">{conditions.length ? conditions.map((condition) => <button key={condition.id} className="test-condition-chip" onClick={() => removeCondition(condition)}>{condition.label} <b>×</b></button>) : <span className="test-empty-condition">条件はあとから追加できます</span>}</div></div></header>
 
-    <section className="test-section test-entrance-section"><div className="test-section-heading"><div><span className="test-eyebrow">SEARCH FROM HERE</span><h2>いま決まっていることから探す</h2></div><span className="test-result-count">{conditions.length ? `${exactMatches.length || resultDishes.length}件` : `${dishes.length}皿`}</span></div><div className="test-entrance-grid">{entranceDefinitions.map((entrance) => <button key={entrance.id} className={`test-entrance-button ${activeEntrance === entrance.id ? "active" : ""}`} onClick={() => setActiveEntrance(entrance.id)}><span className="test-entrance-icon">{entrance.icon}</span><span><strong>{entrance.label}</strong><small>{entrance.note}</small></span><b>＋</b></button>)}</div>{activeEntrance && <div className="test-choice-drawer"><div className="test-choice-heading"><span>{entranceDefinitions.find((item) => item.id === activeEntrance)?.label}</span><small>ひとつ選ぶと、すぐ候補が変わります</small></div><div className="test-choice-list">{entranceChoices[activeEntrance].map((choice) => <button key={`${choice.kind}-${choice.id}`} className={conditions.some((condition) => condition.kind === choice.kind && condition.id === choice.id) ? "selected" : ""} onClick={() => addCondition(choice)}><span><strong>{choice.label}</strong><small>{choice.note}</small></span><b>→</b></button>)}</div></div>}</section>
+    <section className="test-section test-entrance-section"><div className="test-section-heading"><div><span className="test-eyebrow">SEARCH FROM HERE</span><h2>いま決まっていることから探す</h2></div><span className="test-result-count">{conditions.length ? `${exactMatches.length || resultDishes.length}件` : `${dishes.length}皿`}</span></div>{flowStep === "entrances" && <div className="test-entrance-grid">{entranceDefinitions.map((entrance) => <button key={entrance.id} className={`test-entrance-button ${activeEntrance === entrance.id ? "active" : ""}`} onClick={() => openEntrance(entrance.id)}><span className="test-entrance-icon">{entrance.icon}</span><span><strong>{entrance.label}</strong><small>{entrance.note}</small></span><b>＋</b></button>)}</div>}{flowStep === "choices" && <div className="test-choice-drawer test-flow-drawer"><div className="test-flow-current"><span>入口を選択中</span><button className="test-flow-back" onClick={goBackInFlow}>← 入口を選び直す</button></div><div className="test-choice-heading"><span>{entranceDefinitions.find((item) => item.id === activeEntrance)?.label}</span><small>ここからひとつ選びます</small></div><div className="test-choice-list">{entranceChoices[activeEntrance].map((choice) => <button key={`${choice.kind}-${choice.id}`} className={conditions.some((condition) => condition.kind === choice.kind && condition.id === choice.id) ? "selected" : ""} onClick={() => addCondition(choice)}><span><strong>{choice.label}</strong><small>{choice.note}</small></span><b>→</b></button>)}</div></div>}{flowStep === "refine" && <div className="test-choice-drawer test-flow-drawer"><div className="test-flow-current"><span>次の条件をひとつ選ぶ</span><button className="test-flow-back" onClick={goBackInFlow}>← {entranceDefinitions.find((item) => item.id === activeEntrance)?.label}に戻る</button></div><div className="test-choice-heading"><span>次に絞るなら</span><small>選ぶと何件になるか</small></div><div className="test-next-list">{nextChoices.map(({ choice, count }) => <button key={`${choice.kind}-${choice.id}`} onClick={() => addCondition(choice)}><span>{choice.label}</span><small>{count}件</small><b>＋</b></button>)}</div></div>}</section>
 
-    <section className="test-section test-discovery-section"><div className="test-next-filter"><div className="test-next-heading"><div><span className="test-eyebrow">NEXT MOVE</span><h2>次に絞るなら</h2></div><small>選ぶと何件になるか</small></div><div className="test-next-list">{nextChoices.map(({ choice, count }) => <button key={`${choice.kind}-${choice.id}`} onClick={() => addCondition(choice)}><span>{choice.label}</span><small>{count}件</small><b>＋</b></button>)}</div></div><div className="test-path"><span className="test-eyebrow">SEARCH PATH</span><div>{pathItems.length ? pathItems.map((item, index) => <span key={`${item}-${index}`}><b>{item}</b>{index < pathItems.length - 1 && <i>→</i>}</span>) : <span><b>料理を探しはじめる</b></span>}</div></div></section>
+    <section className="test-section test-discovery-section"><div className="test-path"><span className="test-eyebrow">SEARCH PATH</span><div>{pathItems.length ? pathItems.map((item, index) => <span key={`${item}-${index}`}><b>{item}</b>{index < pathItems.length - 1 && <i>→</i>}</span>) : <span><b>料理を探しはじめる</b></span>}</div></div></section>
 
-    <section className="test-section test-results-section"><div className="test-results-heading"><div><span className="test-eyebrow">RECIPES AROUND HERE</span><h2>{relaxed ? "近い方向の料理" : "料理候補"} <em>{exactMatches.length || resultDishes.length}</em></h2></div><p>{relaxed ? "条件が重なりすぎたので、一つだけゆるめた近い候補です。" : "条件は全部決めなくて大丈夫。今の地図から近い順に並べています。"}</p></div><div className="test-dish-list">{resultDishes.map((dish, index) => <article className={`test-dish-card ${selectedDish?.id === dish.id ? "selected" : ""}`} key={dish.id}><TestDishVisual dish={dish} index={index} /><div className="test-dish-copy"><div className="test-dish-meta"><span>{dish.origin}</span><span>{dish.cookingTime}</span><span>{dish.difficulty}</span></div><h3>{dish.name}</h3><p>{dish.description}</p><dl><div><dt>主な食材</dt><dd>{ingredientSummary(dish)}</dd></div><div><dt>作り方</dt><dd>{methodLabel[dish.cookingMethodElement]}</dd></div></dl><p className="test-reason"><b>推薦理由</b>{reasonForDish(dish, conditions)}</p><div className="test-card-actions"><button className="test-recipe-button" onClick={() => setRecipeDish(dish)}>レシピを見る <span>→</span></button><button className="test-map-button" onClick={() => focusMap(dish)}>料理の地図で見る <span>◇</span></button></div></div></article>)}</div></section>
+    <section className="test-section test-results-section"><div className="test-results-heading"><div><span className="test-eyebrow">RECIPES AROUND HERE</span><h2>{relaxed ? "近い方向の料理" : "料理候補"} <em>{exactMatches.length || resultDishes.length}</em></h2></div><p>{relaxed ? "条件が重なりすぎたので、一つだけゆるめた近い候補です。" : "条件は全部決めなくて大丈夫。今の地図から近い順に並べています。"}</p></div><div className="test-dish-list">{resultDishes.map((dish, index) => <article className={`test-dish-card ${selectedDish?.id === dish.id ? "selected" : ""}`} key={dish.id}><TestDishVisual dish={dish} index={index} /><div className="test-dish-copy"><div className="test-dish-meta"><span>{dish.origin}</span><span>{dish.cookingTime}</span><span>{dish.difficulty}</span></div><h3>{dish.name}</h3><p>{dish.description}</p><dl><div><dt>主な食材</dt><dd>{ingredientSummary(dish)}</dd></div><div><dt>作り方</dt><dd>{methodLabel[dish.cookingMethodElement]}</dd></div></dl><p className="test-reason"><b>推薦理由</b>{reasonForDish(dish, conditions)}</p><div className="test-card-actions"><button className="test-recipe-button" onClick={() => setRecipeDish(dish)}>レシピを見る <span>→</span></button><button className="test-map-button" onClick={() => focusMap(dish)}>料理の地図で見る <span>◇</span></button>{onSave && <button className="test-save-card-button" onClick={() => onSave(dish)}>{savedDishIds.includes(dish.id) ? "保存済み" : "保存"}</button>}</div></div></article>)}</div></section>
 
     {selectedDish && <section className="test-section test-map-section" id="test-map"><div className="test-map-heading"><div><span className="test-eyebrow">THE COOKING MAP</span><h2>料理の地図</h2><p>{selectedDish.name}から、近い料理の方向を見てみる</p></div><div className="test-map-mode"><button className={mapMode === "2d" ? "active" : ""} onClick={() => setMapMode("2d")}>2Dで見る</button><button className={mapMode === "3d" ? "active" : ""} onClick={() => setMapMode("3d")}>立体で見る</button></div></div>{mapMode === "2d" ? <TestMap2D dishesToShow={mapDishes} selectedDishId={selectedDish.id} onSelect={(dish) => setSelectedDishId(dish.id)} /> : <TestMap3D selected={selectedDish} related={relatedDishes} onSelect={(dish) => setSelectedDishId(dish.id)} />}<div className="test-map-shift"><span className="test-eyebrow">この料理から動く</span><div><button onClick={() => addCondition(moodChoices[1])}>もっと香ばしく</button><button onClick={() => addCondition(moodChoices[2])}>もっとしっとり</button><button onClick={() => addCondition(moodChoices[0])}>もっと軽く</button><button onClick={() => addCondition(moodChoices[3])}>もっとコクを出す</button></div></div></section>}
 
-    {recipeDish && <TestRecipePanel dish={recipeDish} onClose={() => setRecipeDish(null)} />}
-    <footer className="tetra-test-footer"><span>テスト版 / 検索体験と料理の地図の検証用</span><span>{dishes.length}皿の料理データ</span></footer>
+    {recipeDish && <TestRecipePanel dish={recipeDish} saved={savedDishIds.includes(recipeDish.id)} onSave={onSave ? () => onSave(recipeDish) : undefined} onCook={onCook ? () => onCook(recipeDish) : undefined} onClose={() => setRecipeDish(null)} />}
+    <footer className="tetra-test-footer"><span>{variant === "test" ? "テスト版 / 検索体験と料理の地図の検証用" : "料理の地図 / 発見の入口"}</span><span>{dishes.length}皿の料理データ</span></footer>
   </div></main>;
 }
