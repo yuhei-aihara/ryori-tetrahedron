@@ -1,7 +1,7 @@
 {
   "name": "料理の四面体 — 食の博物誌",
   "short_name": "料理の四面体",
-  "description": "4つの要素を組み合わせて、新しい料理を発見するアプリ",
+  "description": "火・水・空気・油の四面体を動かして、新しい料理を発見するアプリ",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f4eee1",
