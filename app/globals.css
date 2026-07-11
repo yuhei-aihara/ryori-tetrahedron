@@ -154,9 +154,13 @@ em { color: var(--rust); font-style: normal; }
 .stats-strip strong { display: block; margin-top: 7px; font-family: var(--font-display); font-size: 18px; font-weight: 400; }
 
 .tetra-screen { background: var(--paper); }
-.tetra-stage-wrap { position: relative; height: 265px; margin: 2px -7px 0; overflow: hidden; background: #eee8dd; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.tetra-stage-wrap { position: relative; height: 295px; margin: 2px -7px 0; overflow: hidden; background: #eee8dd; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 .drag-hint { position: absolute; z-index: 3; top: 15px; left: 0; right: 0; color: var(--muted); text-align: center; font-size: 9px; letter-spacing: .12em; pointer-events: none; }
 .tetra-stage { position: relative; width: 300px; height: 245px; margin: 11px auto 0; touch-action: none; transform-style: preserve-3d; transform-origin: 50% 50%; will-change: transform; transition: transform .12s ease-out; }
+.tetra-stage-legend { display: flex; flex-wrap: wrap; gap: 8px 13px; align-items: center; min-height: 32px; margin: 0 -7px; padding: 7px 10px 6px; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 9px; }
+.tetra-stage-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.legend-dot { display: inline-block; width: 7px; height: 7px; border: 1px solid var(--ink); border-radius: 50%; }
+.legend-dot.specimen { background: var(--bluegreen); }.legend-dot.target { border-radius: 0; border-color: var(--rust); transform: rotate(45deg); }.legend-dot.taste { background: var(--ink); }
 .tetra-face { position: absolute; z-index: 0; inset: 0; border: 1px solid rgba(72, 67, 57, .22); clip-path: polygon(50% 15.5%, 15% 69.5%, 85% 69.5%); }
 .face-back { background: rgba(78, 122, 63, .12); }
 .face-left { background: rgba(181, 74, 47, .13); clip-path: polygon(50% 15.5%, 15% 69.5%, 50% 91%); }
@@ -180,6 +184,30 @@ em { color: var(--rust); font-style: normal; }
 .secondary-layer-nav button { min-height: 34px; padding: 0 4px; border: 0; border-right: 1px solid var(--line); background: transparent; color: var(--muted); font-size: 10px; }
 .secondary-layer-nav button:last-child { border-right: 0; }
 .secondary-layer-nav button.active { color: var(--ink); font-weight: 700; box-shadow: inset 0 -2px 0 var(--rust); }
+.plot-point { position: absolute; display: block; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 50%; background: transparent; transform: translate(-50%, -50%); }
+.plot-point::before { position: absolute; top: 50%; left: 50%; width: 9px; height: 9px; border: 1px solid rgba(41, 39, 35, .55); border-radius: 50%; background: var(--bluegreen); content: ""; transform: translate(-50%, -50%); opacity: .45; transition: transform .16s ease, width .16s ease, height .16s ease, opacity .16s ease; }
+.plot-point.candidate::before { width: 12px; height: 12px; border-color: var(--ink); background: var(--rust); opacity: .95; }
+.plot-point.selected::before { width: 13px; height: 13px; border: 2px solid var(--ink); background: var(--ochre); opacity: 1; box-shadow: 0 0 0 4px rgba(41, 39, 35, .14); }
+.plot-point:focus-visible { outline: 2px solid var(--rust); outline-offset: -2px; }
+.tetra-insight { margin: 15px 0 0; padding: 15px 14px; border-left: 2px solid var(--rust); background: #eee8dd; }
+.insight-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.insight-heading .text-button { min-height: 28px; font-size: 10px; }
+.tetra-insight h3 { margin: 8px 0 4px; font-family: var(--font-display); font-size: 19px; font-weight: 400; }
+.tetra-insight p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.65; }
+.tetra-insight > small { display: block; margin-top: 10px; color: var(--muted); font-size: 9px; line-height: 1.6; }
+.tetra-score-bars { display: grid; gap: 5px; margin-top: 13px; }
+.tetra-score-bars > div { display: grid; grid-template-columns: 22px 1fr 25px; align-items: center; gap: 7px; color: var(--muted); font-size: 9px; }
+.tetra-score-bars > div > div { height: 5px; overflow: hidden; background: #d7d0c3; }
+.tetra-score-bars i { display: block; height: 100%; min-width: 2px; }
+.tetra-score-bars small { color: var(--muted); font-size: 9px; text-align: right; }
+.nearby-dishes { margin-top: 15px; border-top: 1px dotted var(--line-dark); }
+.nearby-dishes > .eyebrow { display: block; margin: 9px 0 3px; }
+.nearby-dishes button { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 32px; padding: 0; border: 0; border-bottom: 1px dotted var(--line); background: transparent; text-align: left; font-size: 10px; }
+.nearby-dishes button small { color: var(--muted); font-size: 9px; }
+.tetra-insight > .button { margin-top: 13px; min-height: 38px; }
+.exploration-pointer { display: grid; gap: 4px; margin: 14px 0 2px; padding: 11px 0 12px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.exploration-pointer strong { font-family: var(--font-display); font-size: 15px; font-weight: 400; }
+.exploration-pointer small { color: var(--muted); font-size: 9px; }
 .choice-scroller { display: flex; gap: 7px; overflow-x: auto; padding: 3px 0 17px; scrollbar-width: none; }.choice-scroller::-webkit-scrollbar { display: none; }
 .choice-scroller button { display: flex; align-items: center; gap: 7px; min-height: 39px; flex: 0 0 auto; padding: 0 10px; border: 1px solid var(--line); background: transparent; font-size: 11px; }.choice-scroller button.selected { border-color: var(--ink); background: var(--ink); color: #f7f0e6; }.choice-scroller i { display: block; width: 8px; height: 8px; border-radius: 50%; }
 .tetra-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 0 0 32px; }.tetra-actions .button { min-height: 42px; }

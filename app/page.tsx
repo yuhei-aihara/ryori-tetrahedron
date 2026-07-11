@@ -43,6 +43,135 @@ const canonicalLensByVertex: Record<CanonicalVertex, ElementCategory> = {
   oil: "seasoning",
 };
 
+type TetraScore = Record<CanonicalVertex, number>;
+
+const defaultTetraScore: TetraScore = { fire: 0.34, water: 0.28, air: 0.18, oil: 0.2 };
+const methodTetraProfiles: Record<string, TetraScore> = {
+  grill: { fire: 0.78, water: 0.02, air: 0.04, oil: 0.16 },
+  stir: { fire: 0.58, water: 0.03, air: 0.07, oil: 0.32 },
+  simmer: { fire: 0.12, water: 0.72, air: 0.03, oil: 0.13 },
+  steam: { fire: 0.08, water: 0.76, air: 0.1, oil: 0.06 },
+  fry: { fire: 0.12, water: 0.02, air: 0.05, oil: 0.81 },
+  raw: { fire: 0, water: 0.1, air: 0.75, oil: 0.15 },
+};
+const textureTetraProfiles: Record<string, TetraScore> = {
+  roasty: { fire: 0.68, water: 0.02, air: 0.08, oil: 0.22 },
+  fresh: { fire: 0.02, water: 0.12, air: 0.7, oil: 0.16 },
+  rich: { fire: 0.12, water: 0.34, air: 0.04, oil: 0.5 },
+  crunchy: { fire: 0.18, water: 0.02, air: 0.1, oil: 0.7 },
+  fluffy: { fire: 0.3, water: 0.08, air: 0.5, oil: 0.12 },
+  moist: { fire: 0.08, water: 0.54, air: 0.08, oil: 0.3 },
+};
+const seasoningTetraProfiles: Record<string, TetraScore> = {
+  salt: { fire: 0.2, water: 0.34, air: 0.24, oil: 0.22 },
+  "sweet-savory": { fire: 0.28, water: 0.24, air: 0.04, oil: 0.44 },
+  sour: { fire: 0.08, water: 0.18, air: 0.54, oil: 0.2 },
+  spicy: { fire: 0.3, water: 0.16, air: 0.08, oil: 0.46 },
+  umami: { fire: 0.18, water: 0.42, air: 0.12, oil: 0.28 },
+  spice: { fire: 0.3, water: 0.1, air: 0.14, oil: 0.46 },
+};
+const foodTetraProfiles: Record<string, TetraScore> = {
+  chicken: { fire: 0.4, water: 0.22, air: 0.08, oil: 0.3 },
+  pork: { fire: 0.3, water: 0.1, air: 0.04, oil: 0.56 },
+  fish: { fire: 0.12, water: 0.3, air: 0.42, oil: 0.16 },
+  tofu: { fire: 0.06, water: 0.46, air: 0.34, oil: 0.14 },
+  egg: { fire: 0.2, water: 0.2, air: 0.46, oil: 0.14 },
+  mushroom: { fire: 0.18, water: 0.38, air: 0.24, oil: 0.2 },
+  eggplant: { fire: 0.16, water: 0.28, air: 0.08, oil: 0.48 },
+  potato: { fire: 0.28, water: 0.36, air: 0.08, oil: 0.28 },
+};
+
+function normalizeTetraScore(score: TetraScore): TetraScore {
+  const total = canonicalOrder.reduce((sum, vertex) => sum + score[vertex], 0) || 1;
+  return canonicalOrder.reduce((normalized, vertex) => {
+    normalized[vertex] = score[vertex] / total;
+    return normalized;
+  }, {} as TetraScore);
+}
+
+function blendTetraProfiles(profiles: Array<[TetraScore, number]>): TetraScore {
+  const score: TetraScore = { fire: 0, water: 0, air: 0, oil: 0 };
+  profiles.forEach(([profile, weight]) => {
+    canonicalOrder.forEach((vertex) => { score[vertex] += profile[vertex] * weight; });
+  });
+  return normalizeTetraScore(score);
+}
+
+function tetraScoreForDish(dish: Dish): TetraScore {
+  return blendTetraProfiles([
+    [methodTetraProfiles[dish.cookingMethodElement] ?? defaultTetraScore, 0.58],
+    [textureTetraProfiles[dish.textureElement] ?? defaultTetraScore, 0.18],
+    [seasoningTetraProfiles[dish.seasoningElement] ?? defaultTetraScore, 0.16],
+    [foodTetraProfiles[dish.foodElement] ?? defaultTetraScore, 0.08],
+  ]);
+}
+
+function averageTetraScores(scores: TetraScore[]): TetraScore | null {
+  if (scores.length === 0) return null;
+  const total: TetraScore = { fire: 0, water: 0, air: 0, oil: 0 };
+  scores.forEach((score) => canonicalOrder.forEach((vertex) => { total[vertex] += score[vertex]; }));
+  return normalizeTetraScore(total);
+}
+
+function tasteScoreFromLogs(logs: CookingLog[]): TetraScore | null {
+  if (logs.length === 0) return null;
+  const weighted: TetraScore = { fire: 0, water: 0, air: 0, oil: 0 };
+  let weightTotal = 0;
+  logs.forEach((log) => {
+    const dish = getDishById(log.dishId);
+    const weight = Math.max(1, log.rating) + (log.wantToCookAgain >= 4 ? 0.75 : 0);
+    const score = tetraScoreForDish(dish);
+    canonicalOrder.forEach((vertex) => { weighted[vertex] += score[vertex] * weight; });
+    weightTotal += weight;
+  });
+  return normalizeTetraScore(weightTotal ? weighted : defaultTetraScore);
+}
+
+function tetraPositionSummary(score: TetraScore): string {
+  const ranked = [...canonicalOrder].sort((a, b) => score[b] - score[a]);
+  const top = ranked[0];
+  const second = ranked[1];
+  if (score[top] >= 0.62) return `ほぼ${canonicalVertexLabels[top]}の頂点に近い、純度の高い料理。`;
+  if (score[top] - score[second] < 0.13) return `${canonicalVertexLabels[top]}と${canonicalVertexLabels[second]}の間で釣り合う、混合の料理。`;
+  return `${canonicalVertexLabels[top]}を主軸に、${canonicalVertexLabels[second]}が支える構図。`;
+}
+
+function tetraScoreToPoint(score: TetraScore): TetraPoint {
+  return canonicalOrder.reduce((point, vertex, index) => ({
+    x: point.x + tetraPoints[index].x * score[vertex],
+    y: point.y + tetraPoints[index].y * score[vertex],
+    z: point.z + tetraPoints[index].z * score[vertex],
+  }), { x: 0, y: 0, z: 0 });
+}
+
+function mixTetraColor(score: TetraScore): string {
+  const rgb: Record<CanonicalVertex, [number, number, number]> = {
+    fire: [181, 74, 47],
+    water: [53, 96, 143],
+    air: [78, 122, 63],
+    oil: [168, 120, 28],
+  };
+  const mixed = canonicalOrder.reduce((result, vertex) => {
+    result[0] += rgb[vertex][0] * score[vertex];
+    result[1] += rgb[vertex][1] * score[vertex];
+    result[2] += rgb[vertex][2] * score[vertex];
+    return result;
+  }, [0, 0, 0]);
+  return `rgb(${mixed.map((value) => Math.round(value)).join(",")})`;
+}
+
+function radarClipPath(score: TetraScore): string {
+  const values = [score.fire, score.water, score.air, score.oil];
+  const points = values.map((value, index) => {
+    const radius = 11 + value * 38;
+    if (index === 0) return `50% ${50 - radius}%`;
+    if (index === 1) return `${50 + radius}% 50%`;
+    if (index === 2) return `50% ${50 + radius}%`;
+    return `${50 - radius}% 50%`;
+  });
+  return `polygon(${points.join(", ")})`;
+}
+
 const onboardingSlides = [
   {
     eyebrow: "RYORI / 01",
@@ -112,6 +241,7 @@ export default function Home() {
   const [challenges, setChallenges] = useState(() => typeof window === "undefined" ? initialChallenges : storageRead("ryori-challenges", initialChallenges));
   const [activeCategory, setActiveCategory] = useState<ElementCategory>("food");
   const [activeCanonicalVertex, setActiveCanonicalVertex] = useState<CanonicalVertex>("fire");
+  const [selectedPlotDishId, setSelectedPlotDishId] = useState<string | null>(null);
   const [activeDish, setActiveDish] = useState<Dish | null>(null);
   const [whyOpen, setWhyOpen] = useState(false);
   const [toast, setToast] = useState("");
@@ -139,6 +269,7 @@ export default function Home() {
   const savedDishes = useMemo(() => savedDishIds.map(getDishById), [savedDishIds]);
   const mapGrowth = Math.min(92, 22 + logs.length * 14 + savedDishIds.length * 3);
   const currentHomeDish = homeCandidates[0];
+  const tasteScore = useMemo(() => tasteScoreFromLogs(logs), [logs]);
 
   if (!hydrated) {
     return <div className="boot-screen"><span className="boot-mark">R</span><span>味の地図をひらいています</span></div>;
@@ -258,6 +389,9 @@ export default function Home() {
             setActiveCategory={setActiveCategory}
             activeCanonicalVertex={activeCanonicalVertex}
             setActiveCanonicalVertex={setActiveCanonicalVertex}
+            tasteScore={tasteScore}
+            selectedPlotDishId={selectedPlotDishId}
+            setSelectedPlotDishId={setSelectedPlotDishId}
             onSelect={updateSelection}
             rotation={rotation}
             onPointerDown={(event: ReactPointerEvent<HTMLDivElement>) => {
@@ -299,7 +433,7 @@ export default function Home() {
           <RecordListScreen logs={logs} savedDishes={savedDishes} onOpenDish={openDish} />
         )}
         {showMain && screen === "taste" && (
-          <TasteScreen user={user} logs={logs} mapGrowth={mapGrowth} challenges={challenges} onOpenPro={() => setOverlay("pro")} />
+          <TasteScreen user={user} logs={logs} mapGrowth={mapGrowth} challenges={challenges} tasteScore={tasteScore} onOpenPro={() => setOverlay("pro")} />
         )}
 
         {overlay === "detail" && activeDish && (
@@ -398,20 +532,32 @@ function DishRow({ dish, onOpen }: { dish: Dish; onOpen: () => void }) {
   return <button className="dish-row" onClick={onOpen}><span className={`row-mark mark-${dish.foodElement}`} /><span><strong>{dish.name}</strong><small>{dish.origin} · {dish.cookingTime}</small></span><span className="row-arrow">↗</span></button>;
 }
 
-function TetraScreen({ selection, activeCategory, setActiveCategory, activeCanonicalVertex, setActiveCanonicalVertex, onSelect, rotation, onPointerDown, onPointerMove, onPointerUp, onRandomize, onNudge, onSearch, suggestions, onOpenDish, onSave, savedDishIds }: {
-  selection: Record<ElementCategory, string>; activeCategory: ElementCategory; setActiveCategory: (category: ElementCategory) => void; activeCanonicalVertex: CanonicalVertex; setActiveCanonicalVertex: (vertex: CanonicalVertex) => void; onSelect: (category: ElementCategory, id: string) => void; rotation: { x: number; y: number }; onPointerDown: (event: React.PointerEvent<HTMLDivElement>) => void; onPointerMove: (event: React.PointerEvent<HTMLDivElement>) => void; onPointerUp: (event: React.PointerEvent<HTMLDivElement>) => void; onRandomize: () => void; onNudge: () => void; onSearch: () => void; suggestions: Dish[]; onOpenDish: (dish: Dish) => void; onSave: (dish: Dish) => void; savedDishIds: string[];
+function TetraScreen({ selection, activeCategory, setActiveCategory, activeCanonicalVertex, setActiveCanonicalVertex, tasteScore, selectedPlotDishId, setSelectedPlotDishId, onSelect, rotation, onPointerDown, onPointerMove, onPointerUp, onRandomize, onNudge, onSearch, suggestions, onOpenDish, onSave, savedDishIds }: {
+  selection: Record<ElementCategory, string>; activeCategory: ElementCategory; setActiveCategory: (category: ElementCategory) => void; activeCanonicalVertex: CanonicalVertex; setActiveCanonicalVertex: (vertex: CanonicalVertex) => void; tasteScore: TetraScore | null; selectedPlotDishId: string | null; setSelectedPlotDishId: (id: string | null) => void; onSelect: (category: ElementCategory, id: string) => void; rotation: { x: number; y: number }; onPointerDown: (event: React.PointerEvent<HTMLDivElement>) => void; onPointerMove: (event: React.PointerEvent<HTMLDivElement>) => void; onPointerUp: (event: React.PointerEvent<HTMLDivElement>) => void; onRandomize: () => void; onNudge: () => void; onSearch: () => void; suggestions: Dish[]; onOpenDish: (dish: Dish) => void; onSave: (dish: Dish) => void; savedDishIds: string[];
 }) {
   const labels = canonicalOrder.map((category) => ({ category, element: { name: canonicalVertexDescriptions[category].split("。")[0] } }));
+  const targetScore = averageTetraScores(suggestions.map(tetraScoreForDish));
+  const selectedPlotDish = selectedPlotDishId ? getDishById(selectedPlotDishId) : null;
+  const selectedPlotScore = selectedPlotDish ? tetraScoreForDish(selectedPlotDish) : null;
+  const nearbyDishes = selectedPlotDish && selectedPlotScore
+    ? dishes
+      .filter((dish) => dish.id !== selectedPlotDish.id)
+      .map((dish) => ({ dish, distance: tetraDistance(selectedPlotScore, tetraScoreForDish(dish)) }))
+      .sort((a, b) => a.distance - b.distance)
+      .slice(0, 2)
+    : [];
   const selectCanonicalVertex = (vertex: CanonicalVertex) => {
     setActiveCanonicalVertex(vertex);
     setActiveCategory(canonicalLensByVertex[vertex]);
   };
   return <section className="screen tetra-screen">
     <TopBar eyebrow="発見 / 01" title="四面体を動かす" note="ドラッグできます" />
-    <p className="screen-lead">火・水・空気・油の重なりを、<br />料理の補助レイヤーと一緒に探ります。</p>
+    <p className="screen-lead">点は料理、距離は似ている考え方。<br />火・水・空気・油の地図から、次の一皿を探します。</p>
     <div className="tetra-stage-wrap"><div className="drag-hint">← スワイプして回転 →</div><div className="tetra-stage" onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp}>
-      <TetraCanvas labels={labels} rotation={rotation} activeCategory={activeCanonicalVertex} onVertexSelect={selectCanonicalVertex} />
-    </div></div>
+      <TetraCanvas labels={labels} rotation={rotation} activeCategory={activeCanonicalVertex} onVertexSelect={selectCanonicalVertex} dishes={dishes} highlightedDishIds={suggestions.map((dish) => dish.id)} selectedDishId={selectedPlotDishId} onDishSelect={setSelectedPlotDishId} targetScore={targetScore} tasteScore={tasteScore} />
+    </div><div className="tetra-stage-legend"><span><i className="legend-dot specimen" />料理標本 {dishes.length}</span><span><i className="legend-dot target" />今回の探索点</span>{tasteScore ? <span><i className="legend-dot taste" />あなたの味覚点</span> : <span>記録すると味覚点が現れます</span>}</div></div>
+    <div className="tetra-insight">{selectedPlotDish && selectedPlotScore ? <><div className="insight-heading"><span className="eyebrow">四面体上の標本</span><button className="text-button" onClick={() => setSelectedPlotDishId(null)}>閉じる</button></div><h3>{selectedPlotDish.name}</h3><p>{tetraPositionSummary(selectedPlotScore)}</p><div className="tetra-score-bars">{canonicalOrder.map((vertex) => <div key={vertex}><span>{canonicalVertexLabels[vertex]}</span><div><i style={{ width: `${Math.round(selectedPlotScore[vertex] * 100)}%`, backgroundColor: tetraColors[canonicalOrder.indexOf(vertex)] }} /></div><small>{Math.round(selectedPlotScore[vertex] * 100)}</small></div>)}</div><div className="nearby-dishes"><span className="eyebrow">四面体上のご近所</span>{nearbyDishes.map(({ dish, distance }) => <button key={dish.id} onClick={() => setSelectedPlotDishId(dish.id)}><span>{dish.name}</span><small>距離 {distance.toFixed(2)}</small></button>)}</div><button className="button button-outline button-wide" onClick={() => onOpenDish(selectedPlotDish)}>料理の詳細を見る <span>→</span></button></> : <><span className="eyebrow">点で読む料理</span><h3>四面体は、料理の標本箱です。</h3><p>近い点ほど、調理の考え方が似ています。点をタップすると、なぜそこにいるのかと、四面体上のご近所が見えてきます。</p><small>{suggestions.length}つの強調された点は、いまの補助レイヤーから選ばれた候補です。</small></>}</div>
+    <div className="exploration-pointer"><span className="eyebrow">今回の探索点</span><strong>{targetScore ? tetraPositionSummary(targetScore) : "候補を選ぶと、地図上に現在地が現れます。"}</strong><small>候補3皿の中心を、今日の向きとして表示しています。</small></div>
     <div className="selected-axis"><span className="eyebrow">選択中の頂点 / 正典四面体</span><strong>{canonicalVertexLabels[activeCanonicalVertex]}</strong><span>{canonicalVertexDescriptions[activeCanonicalVertex]}</span><small className="support-layer">料理の補助レイヤー：{categoryLabels[activeCategory]}</small></div>
     <div className="secondary-layer-nav" aria-label="料理の補助レイヤー">{categoryOrder.map((category) => <button key={category} className={activeCategory === category ? "active" : ""} onClick={() => setActiveCategory(category)}>{categoryLabels[category]}</button>)}</div>
     <div className="choice-scroller">{cookingElements[activeCategory].map((item) => <button key={item.id} className={selection[activeCategory] === item.id ? "selected" : ""} onClick={() => onSelect(activeCategory, item.id)}><i style={{ backgroundColor: item.color }} />{item.name}</button>)}</div>
@@ -461,9 +607,14 @@ function projectTetraPoint(point: TetraPoint, rotation: { x: number; y: number }
   };
 }
 
-function TetraCanvas({ labels, rotation, activeCategory, onVertexSelect }: { labels: Array<{ category: CanonicalVertex; element: { name: string } }>; rotation: { x: number; y: number }; activeCategory: CanonicalVertex; onVertexSelect: (category: CanonicalVertex) => void }) {
+function tetraDistance(a: TetraScore, b: TetraScore) {
+  return Math.sqrt(canonicalOrder.reduce((sum, vertex) => sum + (a[vertex] - b[vertex]) ** 2, 0));
+}
+
+function TetraCanvas({ labels, rotation, activeCategory, onVertexSelect, dishes, highlightedDishIds, selectedDishId, onDishSelect, targetScore, tasteScore }: { labels: Array<{ category: CanonicalVertex; element: { name: string } }>; rotation: { x: number; y: number }; activeCategory: CanonicalVertex; onVertexSelect: (category: CanonicalVertex) => void; dishes: Dish[]; highlightedDishIds: string[]; selectedDishId: string | null; onDishSelect: (id: string) => void; targetScore: TetraScore | null; tasteScore: TetraScore | null }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const projected = tetraPoints.map((point) => projectTetraPoint(point, rotation));
+  const plotted = dishes.map((dish) => ({ dish, score: tetraScoreForDish(dish), point: projectTetraPoint(tetraScoreToPoint(tetraScoreForDish(dish)), rotation) }));
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -507,6 +658,57 @@ function TetraCanvas({ labels, rotation, activeCategory, onVertexSelect }: { lab
       context.stroke();
     });
 
+    const highlighted = new Set(highlightedDishIds);
+    plotted.slice().sort((a, b) => a.point.z - b.point.z).forEach(({ dish, score, point }) => {
+      const candidate = highlighted.has(dish.id);
+      const selected = selectedDishId === dish.id;
+      const depth = Math.max(0, Math.min(1, (point.z + 1) / 2));
+      const radius = (candidate ? 4.7 : 3.1) * (0.9 + depth * 0.18);
+      context.beginPath();
+      context.arc(point.x, point.y, radius, 0, Math.PI * 2);
+      context.globalAlpha = selected ? 1 : candidate ? 0.94 : 0.34 + depth * 0.22;
+      context.fillStyle = mixTetraColor(score);
+      context.fill();
+      context.strokeStyle = candidate ? "#292723" : "rgba(41, 39, 35, .42)";
+      context.lineWidth = candidate ? 1.2 : 0.7;
+      context.stroke();
+      if (selected) {
+        context.globalAlpha = 0.9;
+        context.beginPath();
+        context.arc(point.x, point.y, radius + 5, 0, Math.PI * 2);
+        context.strokeStyle = "#292723";
+        context.lineWidth = 1.4;
+        context.stroke();
+      }
+    });
+
+    const drawMarker = (score: TetraScore | null, color: string, shape: "diamond" | "circle") => {
+      if (!score) return;
+      const point = projectTetraPoint(tetraScoreToPoint(score), rotation);
+      context.save();
+      context.globalAlpha = 0.95;
+      context.strokeStyle = color;
+      context.lineWidth = 1.5;
+      context.setLineDash([3, 2]);
+      if (shape === "diamond") {
+        context.beginPath();
+        context.moveTo(point.x, point.y - 9);
+        context.lineTo(point.x + 9, point.y);
+        context.lineTo(point.x, point.y + 9);
+        context.lineTo(point.x - 9, point.y);
+        context.closePath();
+        context.stroke();
+      } else {
+        context.beginPath();
+        context.arc(point.x, point.y, 9, 0, Math.PI * 2);
+        context.stroke();
+      }
+      context.restore();
+    };
+    drawMarker(targetScore, "#b54a2f", "diamond");
+    drawMarker(tasteScore, "#292723", "circle");
+    context.globalAlpha = 1;
+
     projected.forEach((point, index) => {
       const isActive = canonicalOrder[index] === activeCategory;
       context.beginPath();
@@ -521,9 +723,9 @@ function TetraCanvas({ labels, rotation, activeCategory, onVertexSelect }: { lab
       context.fillStyle = tetraColors[index];
       context.fill();
     });
-  }, [activeCategory, projected, rotation]);
+  }, [activeCategory, highlightedDishIds, plotted, projected, rotation, selectedDishId, targetScore, tasteScore]);
 
-  return <div className="tetra-canvas-layer"><canvas ref={canvasRef} className="tetra-canvas" width={300} height={245} aria-label="火・水・空気・油を立体的に回転できる四面体" />{labels.map(({ category, element }, index) => { const point = projected[index]; return <button key={category} className={`vertex vertex-3d vertex-${index} vertex-${category} ${activeCategory === category ? "active" : ""}`} style={{ left: point.x, top: point.y }} onClick={() => onVertexSelect(category)}><span className="vertex-dot" /><span className="vertex-tag"><small>{canonicalVertexLabels[category]}</small>{element.name}</span></button>; })}</div>;
+  return <div className="tetra-canvas-layer"><canvas ref={canvasRef} className="tetra-canvas" width={300} height={245} aria-label="料理標本と火・水・空気・油を立体的に回転できる四面体" />{plotted.map(({ dish, point }) => <button key={dish.id} className={`plot-point ${highlightedDishIds.includes(dish.id) ? "candidate" : ""} ${selectedDishId === dish.id ? "selected" : ""}`} style={{ left: point.x, top: point.y, zIndex: Math.round(4 + point.z * 3) }} aria-label={`${dish.name} / 四面体上の標本点`} onPointerDown={(event) => event.stopPropagation()} onClick={() => onDishSelect(dish.id)} />)}{labels.map(({ category, element }, index) => { const point = projected[index]; return <button key={category} className={`vertex vertex-3d vertex-${index} vertex-${category} ${activeCategory === category ? "active" : ""}`} style={{ left: point.x, top: point.y }} onClick={() => onVertexSelect(category)}><span className="vertex-dot" /><span className="vertex-tag"><small>{canonicalVertexLabels[category]}</small>{element.name}</span></button>; })}</div>;
 }
 
 function SuggestionCard({ dish, index, onOpen, onSave, saved }: { dish: Dish; index: number; onOpen: () => void; onSave: () => void; saved: boolean }) {
@@ -546,9 +748,14 @@ function RecordListScreen({ logs, savedDishes, onOpenDish }: { logs: CookingLog[
   return <section className="screen record-list-screen"><TopBar eyebrow="記録 / 03" title="食卓のノート" note={`${logs.length}皿`} /><div className="record-intro"><span className="eyebrow">つくった料理</span><h2>味の記憶を、<br /><em>短く残す。</em></h2><p>ひとことの評価が、次のおすすめの精度を育てます。</p></div>{logs.length === 0 ? <div className="empty-record"><div className="notebook-mark">＋</div><h3>まだ記録はありません</h3><p>四面体から料理を選び、<br />「作ってみる」で30秒の記録を残せます。</p></div> : <div className="log-list">{logs.map((log) => { const dish = getDishById(log.dishId); return <button className="log-row" key={log.id} onClick={() => onOpenDish(dish)}><span className={`row-mark mark-${dish.foodElement}`} /><span><strong>{dish.name}</strong><small>{new Date(log.createdAt).toLocaleDateString("ja-JP")} · おいしさ {log.rating}/5</small></span><span className="rating-dots">{"●".repeat(log.rating)}<i>{"●".repeat(5 - log.rating)}</i></span></button>; })}</div>}<section className="saved-section"><div className="section-heading"><div><span className="eyebrow">保存済み</span><h2>あとで作りたい</h2></div><span className="section-index">{savedDishes.length}</span></div>{savedDishes.length ? savedDishes.map((dish) => <DishRow key={dish.id} dish={dish} onOpen={() => onOpenDish(dish)} />) : <p className="muted-line">気になる料理の「保存」から追加できます。</p>}</section></section>;
 }
 
-function TasteScreen({ user, logs, mapGrowth, challenges, onOpenPro }: { user: User; logs: CookingLog[]; mapGrowth: number; challenges: typeof initialChallenges; onOpenPro: () => void }) {
+function TasteScreen({ user, logs, mapGrowth, challenges, tasteScore, onOpenPro }: { user: User; logs: CookingLog[]; mapGrowth: number; challenges: typeof initialChallenges; tasteScore: TetraScore | null; onOpenPro: () => void }) {
   const completed = challenges.filter((item) => item.completed).length;
-  return <section className="screen taste-screen"><TopBar eyebrow="マイ味覚 / 05" title="味の地図" note={`Lv.${user.explorationLevel}`} /><div className="taste-intro"><span className="eyebrow">あなたの傾向</span><h2>香ばしい焼き料理を<br /><em>好む傾向があります。</em></h2><p>保存と記録が増えるほど、あなたの地図は細やかになります。</p></div><div className="radar-panel"><div className="radar-chart"><div className="radar-grid grid-one" /><div className="radar-grid grid-two" /><div className="radar-grid grid-three" /><div className="radar-fill" /><span className="radar-label radar-top">味付け</span><span className="radar-label radar-right">食感</span><span className="radar-label radar-bottom">食材</span><span className="radar-label radar-left">調理法</span></div><div className="radar-caption"><span>味覚マップ / 現在地</span><strong>{mapGrowth}%</strong><small>{logs.length ? `${logs.length}件の記録から分析` : "まずは1皿、記録してみましょう"}</small></div></div><div className="taste-facts"><div><span>好きな味付け</span><strong>酸味・うま味</strong></div><div><span>好きな調理法</span><strong>焼く・蒸す</strong></div><div><span>よく使う食材</span><strong>鶏肉・きのこ</strong></div><div><span>好きな食感</span><strong>香ばしい</strong></div></div><section className="unknown-area"><div className="section-heading"><div><span className="eyebrow">まだ白い領域</span><h2>次に開ける場所</h2></div><span className="section-index">04 AXIS</span></div><div className="unknown-map"><span className="unknown-dot dot-a" /><span className="unknown-dot dot-b" /><span className="unknown-dot dot-c" /><p>辛味 × 生で仕上げる<br />ふわふわ × 魚</p><small>未知の組み合わせが、2つ残っています</small></div></section><section className="discovery-note"><span className="eyebrow">今月の新しい発見</span><strong>{completed + 1}つ</strong><p>普段選ばない方向へ動いた回数</p></section><button className="pro-inline" onClick={onOpenPro}><span><b>PRO</b> 詳細な味覚分析</span><span>→</span></button></section>;
+  const score = tasteScore ?? defaultTetraScore;
+  const ranked = [...canonicalOrder].sort((a, b) => score[b] - score[a]);
+  const lead = canonicalVertexLabels[ranked[0]];
+  const second = canonicalVertexLabels[ranked[1]];
+  const unexplored = canonicalVertexLabels[ranked[ranked.length - 1]];
+  return <section className="screen taste-screen"><TopBar eyebrow="マイ味覚 / 05" title="味の地図" note={`Lv.${user.explorationLevel}`} /><div className="taste-intro"><span className="eyebrow">あなたの傾向</span><h2>{lead}と{second}の料理を<br /><em>好む傾向があります。</em></h2><p>料理の点が増えるほど、あなたの好きな方向が四面体上に現れます。</p></div><div className="radar-panel"><div className="radar-chart"><div className="radar-grid grid-one" /><div className="radar-grid grid-two" /><div className="radar-grid grid-three" /><div className="radar-fill" style={{ clipPath: radarClipPath(score) }} /><span className="radar-label radar-top">火</span><span className="radar-label radar-right">水</span><span className="radar-label radar-bottom">空気</span><span className="radar-label radar-left">油</span></div><div className="radar-caption"><span>四面体マップ / 現在地</span><strong>{mapGrowth}%</strong><small>{logs.length ? `${logs.length}件の記録から分析` : "まずは1皿、記録してみましょう"}</small></div></div><div className="taste-facts"><div><span>好きな領域</span><strong>{lead}・{second}</strong></div><div><span>よく通る辺</span><strong>{lead} × {second}</strong></div><div><span>補助レイヤー</span><strong>焼く・香ばしい</strong></div><div><span>まだ白い頂点</span><strong>{unexplored}</strong></div></div><section className="unknown-area"><div className="section-heading"><div><span className="eyebrow">まだ白い領域</span><h2>次に開ける場所</h2></div><span className="section-index">04 VERTICES</span></div><div className="unknown-map"><span className="unknown-dot dot-a" /><span className="unknown-dot dot-b" /><span className="unknown-dot dot-c" /><p>{unexplored} × 油の料理<br />火 × {unexplored}の混合</p><small>未知の組み合わせが、2つ残っています</small></div></section><section className="discovery-note"><span className="eyebrow">今月の新しい発見</span><strong>{completed + 1}つ</strong><p>普段選ばない方向へ動いた回数</p></section><button className="pro-inline" onClick={onOpenPro}><span><b>PRO</b> 詳細な味覚分析</span><span>→</span></button></section>;
 }
 
 function DishDetail({ dish, saved, onBack, onSave, onCook, onTasteChange }: { dish: Dish; saved: boolean; onBack: () => void; onSave: () => void; onCook: () => void; onTasteChange: (category: ElementCategory) => void }) {

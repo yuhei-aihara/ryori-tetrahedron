@@ -42,6 +42,11 @@ test("keeps the product metadata and mobile entry points", async () => {
   assert.match(page, /projectTetraPoint/);
   assert.match(page, /火・水・空気・油/);
   assert.match(page, /補助レイヤー/);
+  assert.match(page, /tetraScoreForDish/);
+  assert.match(page, /plot-point/);
+  assert.match(page, /四面体上のご近所/);
+  assert.match(page, /今回の探索点/);
+  assert.match(page, /tasteScoreFromLogs/);
   assert.match(layout, /料理の四面体 — 食の博物誌/);
   assert.match(layout, /manifest:\s*"\/manifest\.webmanifest"/);
   assert.match(css, /position:\s*fixed/);
