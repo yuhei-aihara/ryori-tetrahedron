@@ -752,6 +752,28 @@ function GuideResultCard({ dish, index, saved, onOpen, onOpenMap, onSave }: { di
 }
 
 type GeometryFocus = { kind: "頂点" | "線分" | "面"; label: string; description: string };
+type TetraEntrance = "food" | "mood" | "method" | "texture" | "theme" | "random";
+
+const tetraEntranceLabels: Record<TetraEntrance, string> = {
+  food: "食材から",
+  mood: "味わいから",
+  method: "調理法から",
+  texture: "食感から",
+  theme: "テーマから",
+  random: "おまかせ",
+};
+const tetraEntranceCategory: Partial<Record<TetraEntrance, ElementCategory>> = {
+  food: "food",
+  mood: "seasoning",
+  method: "method",
+  texture: "texture",
+};
+const tetraEntranceForCategory: Record<ElementCategory, TetraEntrance> = {
+  food: "food",
+  method: "method",
+  seasoning: "mood",
+  texture: "texture",
+};
 
 const edgeFocus: GeometryFocus[] = [
   { kind: "線分", label: "火 × 水", description: "乾いた熱と水分の境目。焼き煮・蒸し焼きの方向です。" },
@@ -773,6 +795,8 @@ function TetraScreen({ selection, activeCategory, setActiveCategory, activeCanon
   selection: Record<ElementCategory, string>; activeCategory: ElementCategory; setActiveCategory: (category: ElementCategory) => void; activeCanonicalVertex: CanonicalVertex; setActiveCanonicalVertex: (vertex: CanonicalVertex) => void; theme: ExplorationTheme; themeApplied: boolean; onApplyTheme: () => void; autoRotate: boolean; onToggleAutoRotate: () => void; tasteScore: TetraScore | null; selectedPlotDishId: string | null; setSelectedPlotDishId: (id: string | null) => void; onSelect: (category: ElementCategory, id: string) => void; rotation: { x: number; y: number }; onPointerDown: (event: React.PointerEvent<HTMLDivElement>) => void; onPointerMove: (event: React.PointerEvent<HTMLDivElement>) => void; onPointerUp: (event: React.PointerEvent<HTMLDivElement>) => void; onRandomize: () => void; onNudge: () => void; onSearch: () => void; suggestions: Dish[]; onOpenDish: (dish: Dish) => void; onSave: (dish: Dish) => void; savedDishIds: string[];
 }) {
   const [geometryFocus, setGeometryFocus] = useState<GeometryFocus>({ kind: "頂点", label: "火", description: canonicalVertexDescriptions.fire });
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [activeEntrance, setActiveEntrance] = useState<TetraEntrance>("food");
   const labels = canonicalOrder.map((category) => ({ category, element: { name: canonicalVertexDescriptions[category].split("。")[0] } }));
   const targetScore = averageTetraScores(suggestions.map(tetraScoreForDish));
   const selectedPlotDish = selectedPlotDishId ? getDishById(selectedPlotDishId) : null;
@@ -786,23 +810,36 @@ function TetraScreen({ selection, activeCategory, setActiveCategory, activeCanon
     : [];
   const selectCanonicalVertex = (vertex: CanonicalVertex) => {
     setActiveCanonicalVertex(vertex);
-    setActiveCategory(canonicalLensByVertex[vertex]);
+    const category = canonicalLensByVertex[vertex];
+    setActiveCategory(category);
+    setActiveEntrance(tetraEntranceForCategory[category]);
     setGeometryFocus({ kind: "頂点", label: canonicalVertexLabels[vertex], description: canonicalVertexDescriptions[vertex] });
   };
   const selectEdge = (edgeIndex: number) => setGeometryFocus(edgeFocus[edgeIndex]);
   const selectFace = (faceIndex: number) => setGeometryFocus(faceFocus[faceIndex]);
+  const chooseEntrance = (entrance: TetraEntrance) => {
+    setActiveEntrance(entrance);
+    if (entrance === "theme") {
+      onApplyTheme();
+      return;
+    }
+    if (entrance === "random") {
+      onRandomize();
+      return;
+    }
+    const category = tetraEntranceCategory[entrance];
+    if (category) setActiveCategory(category);
+  };
   return <section className="screen tetra-screen">
     <TopBar eyebrow="発見 / 01" title="料理の地図" note="ドラッグできます" />
     <p className="screen-lead">四面体は、料理を探すための地図です。<br />まず候補を選ぶと、似た料理と次の方向が見えてきます。</p>
     <section className="theme-panel"><div><span className="eyebrow">{theme.period}</span><h2>{theme.title}</h2><p>{theme.prompt}</p></div>{themeApplied ? <span className="theme-applied">テーマを探索中</span> : <button className="button button-dark" onClick={onApplyTheme}>このテーマで探す →</button>}<small>{theme.description}</small></section>
     <div className="tetra-guide-note"><div><span className="guide-sequence">目的</span><b>→</b><span className="guide-sequence">候補</span><b>→</b><span className="guide-sequence guide-sequence-active">地図</span></div><p>点をタップすると、その料理がなぜそこにいるのか、近くに何があるのかを読めます。</p></div>
-    <div className="tetra-reading-strip"><span className="eyebrow">四面体の見方</span><p><strong>まずは赤いひし形の近くの料理点を1つタップ。</strong><br />料理の違いを、4つのつくり方の軸から読めます。</p><div className="tetra-meaning-list"><span><b>頂点</b><small>火・水・空気・油</small></span><span><b>線分</b><small>2つの軸の混ざり方</small></span><span><b>面</b><small>3つの軸の領域</small></span><span><b>点</b><small>料理そのもの</small></span></div></div>
     <div className="tetra-stage-wrap"><div className="drag-hint">← スワイプして回転 →</div><div className="tetra-stage" onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp}>
       <TetraCanvas labels={labels} rotation={rotation} activeCategory={activeCanonicalVertex} onVertexSelect={selectCanonicalVertex} onEdgeSelect={selectEdge} onFaceSelect={selectFace} dishes={dishes} highlightedDishIds={suggestions.map((dish) => dish.id)} selectedDishId={selectedPlotDishId} onDishSelect={setSelectedPlotDishId} targetScore={targetScore} tasteScore={tasteScore} />
-    </div><div className="tetra-stage-toolbar"><span className="geometry-hint">頂点・線分・面・料理点をタップ</span><button className={`rotation-toggle ${autoRotate ? "" : "paused"}`} onClick={onToggleAutoRotate}><i />{autoRotate ? "ゆっくり回転中" : "回転を止める"}</button></div><div className="tetra-stage-legend"><span><i className="legend-dot specimen" />料理標本 {dishes.length}皿</span><span><i className="legend-dot target" />今回の探索点</span>{tasteScore ? <span><i className="legend-dot taste" />あなたの味覚点</span> : <span>記録すると味覚点が現れます</span>}</div></div>
+    </div><div className="tetra-stage-toolbar"><span className="geometry-hint">{selectedPlotDish ? `選択中：${selectedPlotDish.name}` : "頂点・線分・面・料理点をタップ"}</span><div className="tetra-toolbar-actions"><button className="tetra-help-button" onClick={() => setHelpOpen((current) => !current)} aria-expanded={helpOpen}>？ 見方</button><button className={`rotation-toggle ${autoRotate ? "" : "paused"}`} onClick={onToggleAutoRotate}><i />{autoRotate ? "ゆっくり回転中" : "回転を止める"}</button></div></div>{helpOpen && <div className="tetra-help-popover"><div><span className="eyebrow">四面体の見方</span><p>料理点をタップすると、その料理と近い方向が開きます。頂点・線分・面は、料理のつくり方を読むための補助線です。</p></div><div className="tetra-help-list"><span><b>頂点</b>火・水・空気・油</span><span><b>線分</b>2つの軸の混ざり方</span><span><b>面</b>3つの軸の領域</span><span><b>点</b>料理そのもの</span></div></div>}<div className="tetra-stage-legend"><span><i className="legend-dot specimen" />料理標本 {dishes.length}皿</span><span><i className="legend-dot target" />今回の探索点</span>{tasteScore ? <span><i className="legend-dot taste" />あなたの味覚点</span> : <span>記録すると味覚点が現れます</span>}</div></div>
     <div className="tetra-insight">{selectedPlotDish && selectedPlotScore ? <><div className="insight-heading"><span className="eyebrow">四面体上の標本</span><button className="text-button" onClick={() => setSelectedPlotDishId(null)}>閉じる</button></div><h3>{selectedPlotDish.name}</h3><p>{tetraPositionSummary(selectedPlotScore)}</p><div className="tetra-score-bars">{canonicalOrder.map((vertex) => <div key={vertex}><span>{canonicalVertexLabels[vertex]}</span><div><i style={{ width: `${Math.round(selectedPlotScore[vertex] * 100)}%`, backgroundColor: tetraColors[canonicalOrder.indexOf(vertex)] }} /></div><small>{Math.round(selectedPlotScore[vertex] * 100)}</small></div>)}</div><div className="nearby-dishes"><span className="eyebrow">四面体上のご近所</span>{nearbyDishes.map(({ dish, distance }) => <button key={dish.id} onClick={() => setSelectedPlotDishId(dish.id)}><span>{dish.name}</span><small>距離 {distance.toFixed(2)}</small></button>)}</div><button className="button button-outline button-wide" onClick={() => onOpenDish(selectedPlotDish)}>料理の詳細を見る <span>→</span></button></> : <><span className="eyebrow">点で読む料理</span><h3>四面体は、料理の標本箱です。</h3><p>近い点ほど、調理の考え方が似ています。点をタップすると、なぜそこにいるのかと、四面体上のご近所が見えてきます。</p><small>{suggestions.length}つの強調された点は、いまの補助レイヤーから選ばれた候補です。</small></>}</div>
-    <section className="tetra-controls"><div className="tetra-section-heading"><div><span className="eyebrow">地図の下で操作</span><h2>探索条件を変える</h2></div><span className="section-index">条件 → 点</span></div><p className="tetra-section-note">下の食材・調理法・味付け・食感を変えると、上の四面体の赤い探索点が動きます。</p><div className="exploration-pointer"><span className="eyebrow">今回の探索点</span><strong>{targetScore ? tetraPositionSummary(targetScore) : "候補を選ぶと、地図上に現在地が現れます。"}</strong><small>下の条件3つの中心を、上の地図に表示しています。</small></div><div className="selected-axis"><span className="eyebrow">いま触れている{geometryFocus.kind}</span><strong>{geometryFocus.label}</strong><span>{geometryFocus.description}</span><small className="support-layer">料理の補助レイヤー：{categoryLabels[activeCategory]}</small></div><div className="secondary-layer-nav" aria-label="料理の補助レイヤー">{categoryOrder.map((category) => <button key={category} className={activeCategory === category ? "active" : ""} onClick={() => setActiveCategory(category)}>{categoryLabels[category]}</button>)}</div><div className="choice-scroller">{cookingElements[activeCategory].map((item) => <button key={item.id} className={selection[activeCategory] === item.id ? "selected" : ""} onClick={() => onSelect(activeCategory, item.id)}><i style={{ backgroundColor: item.color }} />{item.name}</button>)}</div><div className="tetra-actions"><button className="button button-outline" onClick={onRandomize}>おまかせ <span>↻</span></button><button className="button button-outline" onClick={onNudge}>少し変える <span>↗</span></button></div><button className="button button-dark button-wide search-combination" onClick={onSearch}>この組み合わせで探す <span>→</span></button></section>
-    <section className="tetra-results"><div className="result-header"><div><span className="eyebrow">上の地図の近くから</span><h2>料理候補 <em>03</em></h2></div><button className="text-button result-link">一覧を見る</button></div><p className="tetra-section-note">赤い探索点の近くにある料理です。料理点をタップすると、四面体上の位置と近い料理が開きます。</p><div className="suggestion-stack">{suggestions.map((dish, index) => <SuggestionCard key={dish.id} dish={dish} index={index} onOpen={() => onOpenDish(dish)} onSave={() => onSave(dish)} saved={savedDishIds.includes(dish.id)} />)}</div></section>
+    <section className="tetra-explorer-dock"><div className="tetra-dock-heading"><div><span className="eyebrow">料理の世界を歩く</span><h2>{tetraEntranceLabels[activeEntrance]}</h2></div><span className="section-index">入口 ↔ 地図</span></div><p className="tetra-dock-copy">食材からでも、好きな食感からでも、テーマからでも入れます。入口を変えると、同じ地図の中で別の料理と好みが見えてきます。</p><div className="tetra-entry-rail" aria-label="料理を探す入口">{(Object.keys(tetraEntranceLabels) as TetraEntrance[]).map((entrance) => <button key={entrance} className={activeEntrance === entrance ? "active" : ""} onClick={() => chooseEntrance(entrance)}>{tetraEntranceLabels[entrance]}</button>)}</div><div className="tetra-controls"><div className="exploration-pointer"><span className="eyebrow">いまの地図</span><strong>{targetScore ? tetraPositionSummary(targetScore) : "候補を選ぶと、地図上に現在地が現れます。"}</strong><small>下で選んだ組み合わせが、上の地図の探索点になります。</small></div><div className="selected-axis"><span className="eyebrow">いま触れている{geometryFocus.kind}</span><strong>{geometryFocus.label}</strong><span>{geometryFocus.description}</span><small className="support-layer">補助レイヤー：{categoryLabels[activeCategory]}</small></div><div className="secondary-layer-nav" aria-label="料理の補助レイヤー">{categoryOrder.map((category) => <button key={category} className={activeCategory === category ? "active" : ""} onClick={() => { setActiveCategory(category); setActiveEntrance(tetraEntranceForCategory[category]); }}>{categoryLabels[category]}</button>)}</div><div className="choice-scroller">{cookingElements[activeCategory].map((item) => <button key={item.id} className={selection[activeCategory] === item.id ? "selected" : ""} onClick={() => onSelect(activeCategory, item.id)}><i style={{ backgroundColor: item.color }} />{item.name}</button>)}</div><div className="tetra-actions"><button className="button button-outline" onClick={onRandomize}>おまかせ <span>↻</span></button><button className="button button-outline" onClick={onNudge}>少し変える <span>↗</span></button></div><button className="button button-dark button-wide search-combination" onClick={onSearch}>この組み合わせで探す <span>→</span></button></div><div className="tetra-results"><div className="result-header"><div><span className="eyebrow">この地図の近くから</span><h2>料理候補 <em>03</em></h2></div></div><p className="tetra-section-note">赤い探索点の近くにある料理です。料理点をタップすると、四面体上の位置と近い料理が開きます。</p><div className="suggestion-stack">{suggestions.map((dish, index) => <SuggestionCard key={dish.id} dish={dish} index={index} onOpen={() => onOpenDish(dish)} onSave={() => onSave(dish)} saved={savedDishIds.includes(dish.id)} />)}</div></div></section>
   </section>;
 }
 
