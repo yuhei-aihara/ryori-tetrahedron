@@ -38,6 +38,8 @@ test("keeps the product metadata and mobile entry points", async () => {
   assert.match(page, /保存した料理|定番料理/);
   assert.match(page, /料理の地図を見る/);
   assert.match(page, /今週のテーマ/);
+  assert.match(page, /四面体の見方/);
+  assert.match(page, /料理そのもの/);
   assert.match(page, /線分/);
   assert.match(page, /ゆっくり回転中/);
   assert.match(page, /味覚マップに反映しました/);
