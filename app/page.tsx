@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import {
   categoryLabels,
   cookingElements,
@@ -31,19 +31,6 @@ const canonicalVertexLabels: Record<CanonicalVertex, string> = {
   air: "空気",
   oil: "油",
 };
-const canonicalVertexDescriptions: Record<CanonicalVertex, string> = {
-  fire: "焼く・炒める。乾いた熱で香ばしさをつくる軸",
-  water: "煮る・蒸す・浸す。水分で味をなじませる軸",
-  air: "生・乾かす・泡立てる。軽さと余白をつくる軸",
-  oil: "揚げる・乳化する・香りを運ぶ。油脂の軸",
-};
-const canonicalLensByVertex: Record<CanonicalVertex, ElementCategory> = {
-  fire: "method",
-  water: "method",
-  air: "texture",
-  oil: "seasoning",
-};
-
 type TetraScore = Record<CanonicalVertex, number>;
 
 const defaultTetraScore: TetraScore = { fire: 0.34, water: 0.28, air: 0.18, oil: 0.2 };
@@ -107,13 +94,6 @@ function tetraScoreForDish(dish: Dish): TetraScore {
   ]);
 }
 
-function averageTetraScores(scores: TetraScore[]): TetraScore | null {
-  if (scores.length === 0) return null;
-  const total: TetraScore = { fire: 0, water: 0, air: 0, oil: 0 };
-  scores.forEach((score) => canonicalOrder.forEach((vertex) => { total[vertex] += score[vertex]; }));
-  return normalizeTetraScore(total);
-}
-
 function tasteScoreFromLogs(logs: CookingLog[]): TetraScore | null {
   if (logs.length === 0) return null;
   const weighted: TetraScore = { fire: 0, water: 0, air: 0, oil: 0 };
@@ -126,39 +106,6 @@ function tasteScoreFromLogs(logs: CookingLog[]): TetraScore | null {
     weightTotal += weight;
   });
   return normalizeTetraScore(weightTotal ? weighted : defaultTetraScore);
-}
-
-function tetraPositionSummary(score: TetraScore): string {
-  const ranked = [...canonicalOrder].sort((a, b) => score[b] - score[a]);
-  const top = ranked[0];
-  const second = ranked[1];
-  if (score[top] >= 0.62) return `ほぼ${canonicalVertexLabels[top]}の頂点に近い、純度の高い料理。`;
-  if (score[top] - score[second] < 0.13) return `${canonicalVertexLabels[top]}と${canonicalVertexLabels[second]}の間で釣り合う、混合の料理。`;
-  return `${canonicalVertexLabels[top]}を主軸に、${canonicalVertexLabels[second]}が支える構図。`;
-}
-
-function tetraScoreToPoint(score: TetraScore): TetraPoint {
-  return canonicalOrder.reduce((point, vertex, index) => ({
-    x: point.x + tetraPoints[index].x * score[vertex],
-    y: point.y + tetraPoints[index].y * score[vertex],
-    z: point.z + tetraPoints[index].z * score[vertex],
-  }), { x: 0, y: 0, z: 0 });
-}
-
-function mixTetraColor(score: TetraScore): string {
-  const rgb: Record<CanonicalVertex, [number, number, number]> = {
-    fire: [181, 74, 47],
-    water: [53, 96, 143],
-    air: [78, 122, 63],
-    oil: [168, 120, 28],
-  };
-  const mixed = canonicalOrder.reduce((result, vertex) => {
-    result[0] += rgb[vertex][0] * score[vertex];
-    result[1] += rgb[vertex][1] * score[vertex];
-    result[2] += rgb[vertex][2] * score[vertex];
-    return result;
-  }, [0, 0, 0]);
-  return `rgb(${mixed.map((value) => Math.round(value)).join(",")})`;
 }
 
 function radarClipPath(score: TetraScore): string {
@@ -329,17 +276,11 @@ export default function Home() {
   const [savedDishIds, setSavedDishIds] = useState<string[]>(() => typeof window === "undefined" ? [] : storageRead("ryori-saved", []));
   const [logs, setLogs] = useState<CookingLog[]>(() => typeof window === "undefined" ? [] : storageRead("ryori-logs", []));
   const [challenges, setChallenges] = useState(() => typeof window === "undefined" ? initialChallenges : storageRead("ryori-challenges", initialChallenges));
-  const [activeCategory, setActiveCategory] = useState<ElementCategory>("food");
-  const [activeCanonicalVertex, setActiveCanonicalVertex] = useState<CanonicalVertex>("fire");
-  const [selectedPlotDishId, setSelectedPlotDishId] = useState<string | null>(null);
   const [activeDish, setActiveDish] = useState<Dish | null>(null);
   const [whyOpen, setWhyOpen] = useState(false);
   const [toast, setToast] = useState("");
   const [recordSaved, setRecordSaved] = useState(false);
   const [guideMode, setGuideMode] = useState<GuideMode | null>(null);
-  const [rotation, setRotation] = useState({ x: 18, y: 0 });
-  const [tetraAutoRotate, setTetraAutoRotate] = useState(true);
-  const dragStart = useRef<{ x: number; y: number; rotationX: number; rotationY: number } | null>(null);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -355,14 +296,6 @@ export default function Home() {
     const timeout = window.setTimeout(() => setToast(""), 2600);
     return () => window.clearTimeout(timeout);
   }, [toast]);
-
-  useEffect(() => {
-    if (screen !== "tetra" || !tetraAutoRotate) return;
-    const interval = window.setInterval(() => {
-      setRotation((current) => ({ ...current, x: current.x + 0.32 }));
-    }, 90);
-    return () => window.clearInterval(interval);
-  }, [screen, tetraAutoRotate]);
 
   const homeCandidates = useMemo(() => rankDishes(defaultSelection, dailyLevel), [dailyLevel]);
   const suggestions = useMemo(() => rankDishes(selection).slice(0, 3), [selection]);
@@ -413,7 +346,6 @@ export default function Home() {
       seasoning: dish.seasoningElement,
       texture: dish.textureElement,
     });
-    setSelectedPlotDishId(dish.id);
     setGuideMode(null);
     setScreen("tetra");
     setToast("料理の地図に、今回の候補を置きました");
@@ -421,10 +353,6 @@ export default function Home() {
 
   const applyTheme = () => {
     setSelection(activeTheme.selection);
-    setActiveCanonicalVertex(activeTheme.focus);
-    setActiveCategory(canonicalLensByVertex[activeTheme.focus]);
-    setSelectedPlotDishId(null);
-    setTetraAutoRotate(true);
     setScreen("tetra");
     setToast(`${activeTheme.period}を四面体に置きました`);
   };
@@ -445,34 +373,6 @@ export default function Home() {
 
   const updateSelection = (category: ElementCategory, id: string) => {
     setSelection((current) => ({ ...current, [category]: id }));
-    setActiveCategory(category);
-    const nudgeByCategory: Record<ElementCategory, { x: number; y: number }> = {
-      food: { x: 5, y: 1 },
-      method: { x: 8, y: -2 },
-      seasoning: { x: -4, y: 3 },
-      texture: { x: 2, y: -4 },
-    };
-    setRotation((current) => ({
-      x: current.x + nudgeByCategory[category].x,
-      y: Math.max(-55, Math.min(55, current.y + nudgeByCategory[category].y)),
-    }));
-  };
-
-  const randomize = (oneOnly = false) => {
-    const category = oneOnly ? categoryOrder[Math.floor(Math.random() * categoryOrder.length)] : null;
-    setSelection((current) => {
-      const next = { ...current };
-      const categories = category ? [category] : categoryOrder;
-      categories.forEach((key) => {
-        const options = cookingElements[key];
-        const currentIndex = options.findIndex((item) => item.id === current[key]);
-        const offset = oneOnly ? 1 + Math.floor(Math.random() * Math.max(1, options.length - 1)) : 1 + Math.floor(Math.random() * (options.length - 1));
-        next[key] = options[(currentIndex + offset) % options.length].id;
-      });
-      return next;
-    });
-    setScreen("tetra");
-    setToast(oneOnly ? "ひとつの頂点だけ、少し変えました" : "新しい組み合わせをひらきました");
   };
 
   const navigate = (next: Screen) => {
@@ -527,51 +427,7 @@ export default function Home() {
             savedDishIds={savedDishIds}
           />
         )}
-        {showMain && screen === "tetra" && (
-          <TetraScreen
-            selection={selection}
-            activeCategory={activeCategory}
-            setActiveCategory={setActiveCategory}
-            activeCanonicalVertex={activeCanonicalVertex}
-            setActiveCanonicalVertex={setActiveCanonicalVertex}
-            theme={activeTheme}
-            themeApplied={categoryOrder.every((category) => selection[category] === activeTheme.selection[category])}
-            onApplyTheme={applyTheme}
-            tasteScore={tasteScore}
-            selectedPlotDishId={selectedPlotDishId}
-            setSelectedPlotDishId={setSelectedPlotDishId}
-            onSelect={updateSelection}
-            rotation={rotation}
-            onPointerDown={(event: ReactPointerEvent<HTMLDivElement>) => {
-              event.currentTarget.setPointerCapture(event.pointerId);
-              setTetraAutoRotate(false);
-              dragStart.current = { x: event.clientX, y: event.clientY, rotationX: rotation.x, rotationY: rotation.y };
-            }}
-            onPointerMove={(event: ReactPointerEvent<HTMLDivElement>) => {
-              if (dragStart.current === null) return;
-              const deltaX = event.clientX - dragStart.current.x;
-              const deltaY = event.clientY - dragStart.current.y;
-              setRotation({
-                x: dragStart.current.rotationX + deltaX * 0.55,
-                y: Math.max(-55, Math.min(55, dragStart.current.rotationY - deltaY * 0.45)),
-              });
-            }}
-            onPointerUp={(event: ReactPointerEvent<HTMLDivElement>) => {
-              if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
-              dragStart.current = null;
-              setTetraAutoRotate(true);
-            }}
-            autoRotate={tetraAutoRotate}
-            onToggleAutoRotate={() => setTetraAutoRotate((current) => !current)}
-            onRandomize={() => randomize(false)}
-            onNudge={() => randomize(true)}
-            onSearch={() => setToast("この4要素から、料理候補を並べました")}
-            suggestions={suggestions}
-            onOpenDish={openDish}
-            onSave={saveDish}
-            savedDishIds={savedDishIds}
-          />
-        )}
+        {showMain && screen === "tetra" && <TetraTestScreen />}
         {showMain && screen === "explore" && (
           <ExploreScreen
             challenges={challenges}
@@ -755,262 +611,6 @@ function GuideResultCard({ dish, index, saved, onOpen, onOpenMap, onSave }: { di
   return <article className="guide-result-card"><button className="guide-result-main" onClick={onOpen}><div className={`suggestion-art art-${index}`}><span>{dish.origin}</span><b>{String(index + 1).padStart(2, "0")}</b></div><div className="guide-result-copy"><div className="dish-meta"><span className="level-badge">{dish.adventureLevel}</span><span>{dish.cookingTime} · {dish.difficulty}</span></div><h2>{dish.name}</h2><p>{dish.description}</p><small>{dish.reasonWhyItWorks}</small></div></button><div className="guide-result-actions"><button onClick={onOpenMap}>料理の地図で見る</button><button onClick={onSave}>{saved ? "保存済み" : "保存"}</button></div></article>;
 }
 
-type GeometryFocus = { kind: "頂点" | "線分" | "面"; label: string; description: string };
-type TetraEntrance = "food" | "mood" | "method" | "texture" | "theme" | "random";
-
-const tetraEntranceLabels: Record<TetraEntrance, string> = {
-  food: "食材から",
-  mood: "味わいから",
-  method: "調理法から",
-  texture: "食感から",
-  theme: "テーマから",
-  random: "おまかせ",
-};
-const tetraEntranceCategory: Partial<Record<TetraEntrance, ElementCategory>> = {
-  food: "food",
-  mood: "seasoning",
-  method: "method",
-  texture: "texture",
-};
-const tetraEntranceForCategory: Record<ElementCategory, TetraEntrance> = {
-  food: "food",
-  method: "method",
-  seasoning: "mood",
-  texture: "texture",
-};
-
-const edgeFocus: GeometryFocus[] = [
-  { kind: "線分", label: "火 × 水", description: "乾いた熱と水分の境目。焼き煮・蒸し焼きの方向です。" },
-  { kind: "線分", label: "火 × 空気", description: "香ばしさと軽さの境目。焼いて、最後に空気を残す方向です。" },
-  { kind: "線分", label: "火 × 油", description: "熱と油が重なる境目。揚げ焼きやカリッとした料理の方向です。" },
-  { kind: "線分", label: "水 × 空気", description: "水分と軽さが重なる境目。蒸す・生で仕上げる方向です。" },
-  { kind: "線分", label: "水 × 油", description: "水分と油が重なる境目。煮込みや乳化した料理の方向です。" },
-  { kind: "線分", label: "空気 × 油", description: "軽さと油が重なる境目。揚げる・泡立てる方向です。" },
-];
-
-const faceFocus: GeometryFocus[] = [
-  { kind: "面", label: "火・水・空気", description: "素材の水分と熱を中心に、油を控えて仕上げる面です。" },
-  { kind: "面", label: "火・水・油", description: "熱・水分・油を重ね、満足感のある料理をつくる面です。" },
-  { kind: "面", label: "火・空気・油", description: "焼き目や揚げ目、香りを中心に組み立てる面です。" },
-  { kind: "面", label: "水・空気・油", description: "煮る・蒸す・生の仕上げで、質感を探る面です。" },
-];
-
-function TetraScreen({ selection, activeCategory, setActiveCategory, activeCanonicalVertex, setActiveCanonicalVertex, theme, themeApplied, onApplyTheme, autoRotate, onToggleAutoRotate, tasteScore, selectedPlotDishId, setSelectedPlotDishId, onSelect, rotation, onPointerDown, onPointerMove, onPointerUp, onRandomize, onNudge, onSearch, suggestions, onOpenDish, onSave, savedDishIds }: {
-  selection: Record<ElementCategory, string>; activeCategory: ElementCategory; setActiveCategory: (category: ElementCategory) => void; activeCanonicalVertex: CanonicalVertex; setActiveCanonicalVertex: (vertex: CanonicalVertex) => void; theme: ExplorationTheme; themeApplied: boolean; onApplyTheme: () => void; autoRotate: boolean; onToggleAutoRotate: () => void; tasteScore: TetraScore | null; selectedPlotDishId: string | null; setSelectedPlotDishId: (id: string | null) => void; onSelect: (category: ElementCategory, id: string) => void; rotation: { x: number; y: number }; onPointerDown: (event: React.PointerEvent<HTMLDivElement>) => void; onPointerMove: (event: React.PointerEvent<HTMLDivElement>) => void; onPointerUp: (event: React.PointerEvent<HTMLDivElement>) => void; onRandomize: () => void; onNudge: () => void; onSearch: () => void; suggestions: Dish[]; onOpenDish: (dish: Dish) => void; onSave: (dish: Dish) => void; savedDishIds: string[];
-}) {
-  const [geometryFocus, setGeometryFocus] = useState<GeometryFocus>({ kind: "頂点", label: "火", description: canonicalVertexDescriptions.fire });
-  const [helpOpen, setHelpOpen] = useState(false);
-  const [activeEntrance, setActiveEntrance] = useState<TetraEntrance>("food");
-  const labels = canonicalOrder.map((category) => ({ category, element: { name: canonicalVertexDescriptions[category].split("。")[0] } }));
-  const targetScore = averageTetraScores(suggestions.map(tetraScoreForDish));
-  const selectedPlotDish = selectedPlotDishId ? getDishById(selectedPlotDishId) : null;
-  const selectedPlotScore = selectedPlotDish ? tetraScoreForDish(selectedPlotDish) : null;
-  const nearbyDishes = selectedPlotDish && selectedPlotScore
-    ? dishes
-      .filter((dish) => dish.id !== selectedPlotDish.id)
-      .map((dish) => ({ dish, distance: tetraDistance(selectedPlotScore, tetraScoreForDish(dish)) }))
-      .sort((a, b) => a.distance - b.distance)
-      .slice(0, 2)
-    : [];
-  const selectCanonicalVertex = (vertex: CanonicalVertex) => {
-    setActiveCanonicalVertex(vertex);
-    const category = canonicalLensByVertex[vertex];
-    setActiveCategory(category);
-    setActiveEntrance(tetraEntranceForCategory[category]);
-    setGeometryFocus({ kind: "頂点", label: canonicalVertexLabels[vertex], description: canonicalVertexDescriptions[vertex] });
-  };
-  const selectEdge = (edgeIndex: number) => setGeometryFocus(edgeFocus[edgeIndex]);
-  const selectFace = (faceIndex: number) => setGeometryFocus(faceFocus[faceIndex]);
-  const chooseEntrance = (entrance: TetraEntrance) => {
-    setActiveEntrance(entrance);
-    if (entrance === "theme") {
-      onApplyTheme();
-      return;
-    }
-    if (entrance === "random") {
-      onRandomize();
-      return;
-    }
-    const category = tetraEntranceCategory[entrance];
-    if (category) setActiveCategory(category);
-  };
-  return <section className="screen tetra-screen">
-    <TopBar eyebrow="発見 / 01" title="料理の地図" note="ドラッグできます" />
-    <p className="screen-lead">四面体は、料理を探すための地図です。<br />まず候補を選ぶと、似た料理と次の方向が見えてきます。</p>
-    <section className="theme-panel"><div><span className="eyebrow">{theme.period}</span><h2>{theme.title}</h2><p>{theme.prompt}</p></div>{themeApplied ? <span className="theme-applied">テーマを探索中</span> : <button className="button button-dark" onClick={onApplyTheme}>このテーマで探す →</button>}<small>{theme.description}</small></section>
-    <div className="tetra-guide-note"><div><span className="guide-sequence">目的</span><b>→</b><span className="guide-sequence">候補</span><b>→</b><span className="guide-sequence guide-sequence-active">地図</span></div><p>点をタップすると、その料理がなぜそこにいるのか、近くに何があるのかを読めます。</p></div>
-    <div className="tetra-stage-wrap"><div className="drag-hint">← スワイプして回転 →</div><div className="tetra-stage" onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp}>
-      <TetraCanvas labels={labels} rotation={rotation} activeCategory={activeCanonicalVertex} onVertexSelect={selectCanonicalVertex} onEdgeSelect={selectEdge} onFaceSelect={selectFace} dishes={dishes} highlightedDishIds={suggestions.map((dish) => dish.id)} selectedDishId={selectedPlotDishId} onDishSelect={setSelectedPlotDishId} targetScore={targetScore} tasteScore={tasteScore} />
-    </div><div className="tetra-stage-toolbar"><span className="geometry-hint">{selectedPlotDish ? `選択中：${selectedPlotDish.name}` : "頂点・線分・面・料理点をタップ"}</span><div className="tetra-toolbar-actions"><button className="tetra-help-button" onClick={() => setHelpOpen((current) => !current)} aria-expanded={helpOpen}>？ 見方</button><button className={`rotation-toggle ${autoRotate ? "" : "paused"}`} onClick={onToggleAutoRotate}><i />{autoRotate ? "ゆっくり回転中" : "回転を止める"}</button></div></div>{helpOpen && <div className="tetra-help-popover"><div><span className="eyebrow">四面体の見方</span><p>料理点をタップすると、その料理と近い方向が開きます。頂点・線分・面は、料理のつくり方を読むための補助線です。</p></div><div className="tetra-help-list"><span><b>頂点</b>火・水・空気・油</span><span><b>線分</b>2つの軸の混ざり方</span><span><b>面</b>3つの軸の領域</span><span><b>点</b>料理そのもの</span></div></div>}<div className="tetra-stage-legend"><span><i className="legend-dot specimen" />料理標本 {dishes.length}皿</span><span><i className="legend-dot target" />今回の探索点</span>{tasteScore ? <span><i className="legend-dot taste" />あなたの味覚点</span> : <span>記録すると味覚点が現れます</span>}</div></div>
-    <div className="tetra-insight">{selectedPlotDish && selectedPlotScore ? <><div className="insight-heading"><span className="eyebrow">四面体上の標本</span><button className="text-button" onClick={() => setSelectedPlotDishId(null)}>閉じる</button></div><h3>{selectedPlotDish.name}</h3><p>{tetraPositionSummary(selectedPlotScore)}</p><div className="tetra-score-bars">{canonicalOrder.map((vertex) => <div key={vertex}><span>{canonicalVertexLabels[vertex]}</span><div><i style={{ width: `${Math.round(selectedPlotScore[vertex] * 100)}%`, backgroundColor: tetraColors[canonicalOrder.indexOf(vertex)] }} /></div><small>{Math.round(selectedPlotScore[vertex] * 100)}</small></div>)}</div><div className="nearby-dishes"><span className="eyebrow">四面体上のご近所</span>{nearbyDishes.map(({ dish, distance }) => <button key={dish.id} onClick={() => setSelectedPlotDishId(dish.id)}><span>{dish.name}</span><small>距離 {distance.toFixed(2)}</small></button>)}</div><button className="button button-outline button-wide" onClick={() => onOpenDish(selectedPlotDish)}>料理の詳細を見る <span>→</span></button></> : <><span className="eyebrow">点で読む料理</span><h3>四面体は、料理の標本箱です。</h3><p>近い点ほど、調理の考え方が似ています。点をタップすると、なぜそこにいるのかと、四面体上のご近所が見えてきます。</p><small>{suggestions.length}つの強調された点は、いまの補助レイヤーから選ばれた候補です。</small></>}</div>
-    <section className="tetra-explorer-dock"><div className="tetra-dock-heading"><div><span className="eyebrow">料理の世界を歩く</span><h2>{tetraEntranceLabels[activeEntrance]}</h2></div><span className="section-index">入口 ↔ 地図</span></div><p className="tetra-dock-copy">食材からでも、好きな食感からでも、テーマからでも入れます。入口を変えると、同じ地図の中で別の料理と好みが見えてきます。</p><div className="tetra-entry-rail" aria-label="料理を探す入口">{(Object.keys(tetraEntranceLabels) as TetraEntrance[]).map((entrance) => <button key={entrance} className={activeEntrance === entrance ? "active" : ""} onClick={() => chooseEntrance(entrance)}>{tetraEntranceLabels[entrance]}</button>)}</div><div className="tetra-controls"><div className="exploration-pointer"><span className="eyebrow">いまの地図</span><strong>{targetScore ? tetraPositionSummary(targetScore) : "候補を選ぶと、地図上に現在地が現れます。"}</strong><small>下で選んだ組み合わせが、上の地図の探索点になります。</small></div><div className="selected-axis"><span className="eyebrow">いま触れている{geometryFocus.kind}</span><strong>{geometryFocus.label}</strong><span>{geometryFocus.description}</span><small className="support-layer">補助レイヤー：{categoryLabels[activeCategory]}</small></div><div className="secondary-layer-nav" aria-label="料理の補助レイヤー">{categoryOrder.map((category) => <button key={category} className={activeCategory === category ? "active" : ""} onClick={() => { setActiveCategory(category); setActiveEntrance(tetraEntranceForCategory[category]); }}>{categoryLabels[category]}</button>)}</div><div className="choice-scroller">{cookingElements[activeCategory].map((item) => <button key={item.id} className={selection[activeCategory] === item.id ? "selected" : ""} onClick={() => onSelect(activeCategory, item.id)}><i style={{ backgroundColor: item.color }} />{item.name}</button>)}</div><div className="tetra-actions"><button className="button button-outline" onClick={onRandomize}>おまかせ <span>↻</span></button><button className="button button-outline" onClick={onNudge}>少し変える <span>↗</span></button></div><button className="button button-dark button-wide search-combination" onClick={onSearch}>この組み合わせで探す <span>→</span></button></div><div className="tetra-results"><div className="result-header"><div><span className="eyebrow">この地図の近くから</span><h2>料理候補 <em>03</em></h2></div></div><p className="tetra-section-note">赤い探索点の近くにある料理です。料理点をタップすると、四面体上の位置と近い料理が開きます。</p><div className="suggestion-stack">{suggestions.map((dish, index) => <SuggestionCard key={dish.id} dish={dish} index={index} onOpen={() => onOpenDish(dish)} onSave={() => onSave(dish)} saved={savedDishIds.includes(dish.id)} />)}</div></div></section>
-  </section>;
-}
-
-type TetraPoint = { x: number; y: number; z: number };
-
-const tetraPoints: TetraPoint[] = [
-  { x: 1, y: 1, z: 1 },
-  { x: 1, y: -1, z: -1 },
-  { x: -1, y: 1, z: -1 },
-  { x: -1, y: -1, z: 1 },
-];
-
-const tetraEdges = [[0, 1], [0, 2], [0, 3], [1, 2], [1, 3], [2, 3]];
-const tetraFaces = [[0, 1, 2], [0, 1, 3], [0, 2, 3], [1, 2, 3]];
-const tetraColors = ["#b54a2f", "#35608f", "#4e7a3f", "#a8781c"];
-
-function rotateTetraPoint(point: TetraPoint, rotation: { x: number; y: number }) {
-  const yaw = (rotation.x * Math.PI) / 180;
-  const pitch = (rotation.y * Math.PI) / 180;
-  const cosYaw = Math.cos(yaw);
-  const sinYaw = Math.sin(yaw);
-  const x = point.x * cosYaw + point.z * sinYaw;
-  const zAfterYaw = -point.x * sinYaw + point.z * cosYaw;
-  const cosPitch = Math.cos(pitch);
-  const sinPitch = Math.sin(pitch);
-  return {
-    x,
-    y: point.y * cosPitch - zAfterYaw * sinPitch,
-    z: point.y * sinPitch + zAfterYaw * cosPitch,
-  };
-}
-
-function projectTetraPoint(point: TetraPoint, rotation: { x: number; y: number }) {
-  const rotated = rotateTetraPoint(point, rotation);
-  const cameraDistance = 5.2;
-  const perspective = cameraDistance / (cameraDistance - rotated.z);
-  return {
-    x: 150 + rotated.x * 57 * perspective,
-    y: 122 - rotated.y * 57 * perspective,
-    z: rotated.z,
-  };
-}
-
-function tetraDistance(a: TetraScore, b: TetraScore) {
-  return Math.sqrt(canonicalOrder.reduce((sum, vertex) => sum + (a[vertex] - b[vertex]) ** 2, 0));
-}
-
-function TetraCanvas({ labels, rotation, activeCategory, onVertexSelect, onEdgeSelect, onFaceSelect, dishes, highlightedDishIds, selectedDishId, onDishSelect, targetScore, tasteScore }: { labels: Array<{ category: CanonicalVertex; element: { name: string } }>; rotation: { x: number; y: number }; activeCategory: CanonicalVertex; onVertexSelect: (category: CanonicalVertex) => void; onEdgeSelect: (edgeIndex: number) => void; onFaceSelect: (faceIndex: number) => void; dishes: Dish[]; highlightedDishIds: string[]; selectedDishId: string | null; onDishSelect: (id: string) => void; targetScore: TetraScore | null; tasteScore: TetraScore | null }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const projected = tetraPoints.map((point) => projectTetraPoint(point, rotation));
-  const plotted = dishes.map((dish) => ({ dish, score: tetraScoreForDish(dish), point: projectTetraPoint(tetraScoreToPoint(tetraScoreForDish(dish)), rotation) }));
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const context = canvas.getContext("2d");
-    if (!context) return;
-    const width = 300;
-    const height = 245;
-    const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
-    canvas.width = width * pixelRatio;
-    canvas.height = height * pixelRatio;
-    context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
-    context.clearRect(0, 0, width, height);
-
-    const faceColors = ["rgba(181, 74, 47, .13)", "rgba(53, 96, 143, .13)", "rgba(78, 122, 63, .13)", "rgba(168, 120, 28, .13)"];
-    tetraFaces
-      .map((face, index) => ({ face, index, depth: face.reduce((sum, pointIndex) => sum + projected[pointIndex].z, 0) / 3 }))
-      .sort((a, b) => a.depth - b.depth)
-      .forEach(({ face, index }) => {
-        context.beginPath();
-        face.forEach((pointIndex, pointPosition) => {
-          const point = projected[pointIndex];
-          if (pointPosition === 0) context.moveTo(point.x, point.y);
-          else context.lineTo(point.x, point.y);
-        });
-        context.closePath();
-        context.fillStyle = faceColors[index];
-        context.fill();
-        context.strokeStyle = "rgba(72, 67, 57, .22)";
-        context.lineWidth = 1;
-        context.stroke();
-      });
-
-    context.lineCap = "round";
-    tetraEdges.forEach(([start, end]) => {
-      context.beginPath();
-      context.moveTo(projected[start].x, projected[start].y);
-      context.lineTo(projected[end].x, projected[end].y);
-      context.strokeStyle = "rgba(41, 39, 35, .78)";
-      context.lineWidth = 2;
-      context.stroke();
-    });
-
-    const highlighted = new Set(highlightedDishIds);
-    plotted.slice().sort((a, b) => a.point.z - b.point.z).forEach(({ dish, score, point }) => {
-      const candidate = highlighted.has(dish.id);
-      const selected = selectedDishId === dish.id;
-      const depth = Math.max(0, Math.min(1, (point.z + 1) / 2));
-      const radius = (candidate ? 4.7 : 3.1) * (0.9 + depth * 0.18);
-      context.beginPath();
-      context.arc(point.x, point.y, radius, 0, Math.PI * 2);
-      context.globalAlpha = selected ? 1 : candidate ? 0.94 : 0.34 + depth * 0.22;
-      context.fillStyle = mixTetraColor(score);
-      context.fill();
-      context.strokeStyle = candidate ? "#292723" : "rgba(41, 39, 35, .42)";
-      context.lineWidth = candidate ? 1.2 : 0.7;
-      context.stroke();
-      if (selected) {
-        context.globalAlpha = 0.9;
-        context.beginPath();
-        context.arc(point.x, point.y, radius + 5, 0, Math.PI * 2);
-        context.strokeStyle = "#292723";
-        context.lineWidth = 1.4;
-        context.stroke();
-      }
-    });
-
-    const drawMarker = (score: TetraScore | null, color: string, shape: "diamond" | "circle") => {
-      if (!score) return;
-      const point = projectTetraPoint(tetraScoreToPoint(score), rotation);
-      context.save();
-      context.globalAlpha = 0.95;
-      context.strokeStyle = color;
-      context.lineWidth = 1.5;
-      context.setLineDash([3, 2]);
-      if (shape === "diamond") {
-        context.beginPath();
-        context.moveTo(point.x, point.y - 9);
-        context.lineTo(point.x + 9, point.y);
-        context.lineTo(point.x, point.y + 9);
-        context.lineTo(point.x - 9, point.y);
-        context.closePath();
-        context.stroke();
-      } else {
-        context.beginPath();
-        context.arc(point.x, point.y, 9, 0, Math.PI * 2);
-        context.stroke();
-      }
-      context.restore();
-    };
-    drawMarker(targetScore, "#b54a2f", "diamond");
-    drawMarker(tasteScore, "#292723", "circle");
-    context.globalAlpha = 1;
-
-    projected.forEach((point, index) => {
-      const isActive = canonicalOrder[index] === activeCategory;
-      context.beginPath();
-      context.arc(point.x, point.y, isActive ? 11 : 9, 0, Math.PI * 2);
-      context.fillStyle = "#eee8dd";
-      context.fill();
-      context.strokeStyle = isActive ? "#292723" : tetraColors[index];
-      context.lineWidth = isActive ? 2 : 1.5;
-      context.stroke();
-      context.beginPath();
-      context.arc(point.x, point.y, 5.5, 0, Math.PI * 2);
-      context.fillStyle = tetraColors[index];
-      context.fill();
-    });
-  }, [activeCategory, highlightedDishIds, plotted, projected, rotation, selectedDishId, targetScore, tasteScore]);
-
-  return <div className="tetra-canvas-layer"><canvas ref={canvasRef} className="tetra-canvas" width={300} height={245} aria-label="料理標本と火・水・空気・油を立体的に回転できる四面体" /><svg className="tetra-hotspots" viewBox="0 0 300 245" aria-label="四面体の線分と面"><g className="face-hotspots">{tetraFaces.map((face, index) => <polygon key={`face-${index}`} points={face.map((pointIndex) => `${projected[pointIndex].x},${projected[pointIndex].y}`).join(" ")} onClick={() => onFaceSelect(index)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") onFaceSelect(index); }} role="button" tabIndex={0} aria-label={`${faceFocus[index].label}の面`} />)}</g><g className="edge-hotspots">{tetraEdges.map(([start, end], index) => <line key={`edge-${index}`} x1={projected[start].x} y1={projected[start].y} x2={projected[end].x} y2={projected[end].y} onClick={() => onEdgeSelect(index)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") onEdgeSelect(index); }} role="button" tabIndex={0} aria-label={`${edgeFocus[index].label}の線分`} />)}</g></svg>{plotted.map(({ dish, point }) => <button key={dish.id} className={`plot-point ${highlightedDishIds.includes(dish.id) ? "candidate" : ""} ${selectedDishId === dish.id ? "selected" : ""}`} style={{ left: point.x, top: point.y, zIndex: Math.round(4 + point.z * 3) }} aria-label={`${dish.name} / 四面体上の標本点`} onPointerDown={(event) => event.stopPropagation()} onClick={() => onDishSelect(dish.id)} />)}{labels.map(({ category, element }, index) => { const point = projected[index]; return <button key={category} className={`vertex vertex-3d vertex-${index} vertex-${category} ${activeCategory === category ? "active" : ""}`} style={{ left: point.x, top: point.y }} onClick={() => onVertexSelect(category)}><span className="vertex-dot" /><span className="vertex-tag"><small>{canonicalVertexLabels[category]}</small>{element.name}</span></button>; })}</div>;
-}
-
-function SuggestionCard({ dish, index, onOpen, onSave, saved }: { dish: Dish; index: number; onOpen: () => void; onSave: () => void; saved: boolean }) {
-  return <article className="suggestion-card"><button className="suggestion-main" onClick={onOpen}><div className={`suggestion-art art-${index}`}><span>{dish.origin}</span><b>{String(index + 1).padStart(2, "0")}</b></div><div className="suggestion-copy"><div className="dish-meta"><span className="level-badge">{dish.adventureLevel}</span><span>{dish.cookingTime} · {dish.difficulty}</span></div><h3>{dish.name}</h3><p>{dish.description}</p><small>主な材料：{dish.ingredients.slice(0, 3).join("・")}</small></div></button><div className="suggestion-footer"><div className="tetra-mini-tags">{[dish.foodElement, dish.cookingMethodElement, dish.seasoningElement, dish.textureElement].map((id) => <span key={id}>{labelForId(id)}</span>)}</div><button className={`save-button ${saved ? "saved" : ""}`} onClick={onSave}>{saved ? "保存済み" : "保存"}</button><button className="make-button" onClick={onOpen}>作ってみる →</button></div></article>;
-}
 
 function labelForId(id: string) {
   const hit = categoryOrder.flatMap((category) => cookingElements[category]).find((element) => element.id === id);
