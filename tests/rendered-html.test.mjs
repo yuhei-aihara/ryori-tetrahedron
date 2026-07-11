@@ -33,9 +33,12 @@ test("keeps the product metadata and mobile entry points", async () => {
     readFile(new URL("../public/manifest.webmanifest", import.meta.url), "utf8"),
   ]);
 
-  assert.match(page, /食材から探す/);
-  assert.match(page, /いつもの料理を変える/);
+  assert.match(page, /食材と気分から探す/);
+  assert.match(page, /保存した料理|定番料理/);
   assert.match(page, /料理の地図を見る/);
+  assert.match(page, /今週のテーマ/);
+  assert.match(page, /線分/);
+  assert.match(page, /ゆっくり回転中/);
   assert.match(page, /味覚マップに反映しました/);
   assert.match(page, /料理体験チャレンジ/);
   assert.match(page, /RYORI PRO/);
