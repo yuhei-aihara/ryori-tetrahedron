@@ -40,6 +40,8 @@ test("keeps the product metadata and mobile entry points", async () => {
   assert.match(page, /setPointerCapture/);
   assert.match(page, /tetra-canvas/);
   assert.match(page, /projectTetraPoint/);
+  assert.match(page, /火・水・空気・油/);
+  assert.match(page, /補助レイヤー/);
   assert.match(layout, /料理の四面体 — 食の博物誌/);
   assert.match(layout, /manifest:\s*"\/manifest\.webmanifest"/);
   assert.match(css, /position:\s*fixed/);

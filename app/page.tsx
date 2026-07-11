@@ -2,13 +2,11 @@
 
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type PointerEvent as ReactPointerEvent } from "react";
 import {
-  categoryDescriptions,
   categoryLabels,
   cookingElements,
   defaultSelection,
   defaultUser,
   dishes,
-  findElement,
   getDishById,
   initialChallenges,
   type AdventureLevel,
@@ -23,6 +21,27 @@ type Overlay = "detail" | "record" | "pro" | null;
 type RecordDraft = Pick<CookingLog, "rating" | "wantToCookAgain" | "difficultyRating" | "familyReaction" | "memo">;
 
 const categoryOrder: ElementCategory[] = ["food", "method", "seasoning", "texture"];
+type CanonicalVertex = "fire" | "water" | "air" | "oil";
+
+const canonicalOrder: CanonicalVertex[] = ["fire", "water", "air", "oil"];
+const canonicalVertexLabels: Record<CanonicalVertex, string> = {
+  fire: "火",
+  water: "水",
+  air: "空気",
+  oil: "油",
+};
+const canonicalVertexDescriptions: Record<CanonicalVertex, string> = {
+  fire: "焼く・炒める。乾いた熱で香ばしさをつくる軸",
+  water: "煮る・蒸す・浸す。水分で味をなじませる軸",
+  air: "生・乾かす・泡立てる。軽さと余白をつくる軸",
+  oil: "揚げる・乳化する・香りを運ぶ。油脂の軸",
+};
+const canonicalLensByVertex: Record<CanonicalVertex, ElementCategory> = {
+  fire: "method",
+  water: "method",
+  air: "texture",
+  oil: "seasoning",
+};
 
 const onboardingSlides = [
   {
@@ -34,7 +53,7 @@ const onboardingSlides = [
   {
     eyebrow: "RYORI / 02",
     title: "4つの頂点を、\n触って動かそう",
-    body: "食材・調理法・味付け・食感。4つの要素を選ぶと、料理の可能性が広がります。",
+    body: "火・水・空気・油。料理の熱や水分、空気の入り方、油の運び方を動かすと、料理の可能性が広がります。食材や味付けは補助レイヤーとして重ねます。",
     visual: "tetra",
   },
   {
@@ -92,6 +111,7 @@ export default function Home() {
   const [logs, setLogs] = useState<CookingLog[]>(() => typeof window === "undefined" ? [] : storageRead("ryori-logs", []));
   const [challenges, setChallenges] = useState(() => typeof window === "undefined" ? initialChallenges : storageRead("ryori-challenges", initialChallenges));
   const [activeCategory, setActiveCategory] = useState<ElementCategory>("food");
+  const [activeCanonicalVertex, setActiveCanonicalVertex] = useState<CanonicalVertex>("fire");
   const [activeDish, setActiveDish] = useState<Dish | null>(null);
   const [whyOpen, setWhyOpen] = useState(false);
   const [toast, setToast] = useState("");
@@ -236,6 +256,8 @@ export default function Home() {
             selection={selection}
             activeCategory={activeCategory}
             setActiveCategory={setActiveCategory}
+            activeCanonicalVertex={activeCanonicalVertex}
+            setActiveCanonicalVertex={setActiveCanonicalVertex}
             onSelect={updateSelection}
             rotation={rotation}
             onPointerDown={(event: ReactPointerEvent<HTMLDivElement>) => {
@@ -376,26 +398,27 @@ function DishRow({ dish, onOpen }: { dish: Dish; onOpen: () => void }) {
   return <button className="dish-row" onClick={onOpen}><span className={`row-mark mark-${dish.foodElement}`} /><span><strong>{dish.name}</strong><small>{dish.origin} · {dish.cookingTime}</small></span><span className="row-arrow">↗</span></button>;
 }
 
-function TetraScreen({ selection, activeCategory, setActiveCategory, onSelect, rotation, onPointerDown, onPointerMove, onPointerUp, onRandomize, onNudge, onSearch, suggestions, onOpenDish, onSave, savedDishIds }: {
-  selection: Record<ElementCategory, string>; activeCategory: ElementCategory; setActiveCategory: (category: ElementCategory) => void; onSelect: (category: ElementCategory, id: string) => void; rotation: { x: number; y: number }; onPointerDown: (event: React.PointerEvent<HTMLDivElement>) => void; onPointerMove: (event: React.PointerEvent<HTMLDivElement>) => void; onPointerUp: (event: React.PointerEvent<HTMLDivElement>) => void; onRandomize: () => void; onNudge: () => void; onSearch: () => void; suggestions: Dish[]; onOpenDish: (dish: Dish) => void; onSave: (dish: Dish) => void; savedDishIds: string[];
+function TetraScreen({ selection, activeCategory, setActiveCategory, activeCanonicalVertex, setActiveCanonicalVertex, onSelect, rotation, onPointerDown, onPointerMove, onPointerUp, onRandomize, onNudge, onSearch, suggestions, onOpenDish, onSave, savedDishIds }: {
+  selection: Record<ElementCategory, string>; activeCategory: ElementCategory; setActiveCategory: (category: ElementCategory) => void; activeCanonicalVertex: CanonicalVertex; setActiveCanonicalVertex: (vertex: CanonicalVertex) => void; onSelect: (category: ElementCategory, id: string) => void; rotation: { x: number; y: number }; onPointerDown: (event: React.PointerEvent<HTMLDivElement>) => void; onPointerMove: (event: React.PointerEvent<HTMLDivElement>) => void; onPointerUp: (event: React.PointerEvent<HTMLDivElement>) => void; onRandomize: () => void; onNudge: () => void; onSearch: () => void; suggestions: Dish[]; onOpenDish: (dish: Dish) => void; onSave: (dish: Dish) => void; savedDishIds: string[];
 }) {
-  const labels = activeElementsFor(selection);
+  const labels = canonicalOrder.map((category) => ({ category, element: { name: canonicalVertexDescriptions[category].split("。")[0] } }));
+  const selectCanonicalVertex = (vertex: CanonicalVertex) => {
+    setActiveCanonicalVertex(vertex);
+    setActiveCategory(canonicalLensByVertex[vertex]);
+  };
   return <section className="screen tetra-screen">
     <TopBar eyebrow="発見 / 01" title="四面体を動かす" note="ドラッグできます" />
-    <p className="screen-lead">4つの頂点を選ぶと、<br />料理の可能性がリアルタイムに変わります。</p>
+    <p className="screen-lead">火・水・空気・油の重なりを、<br />料理の補助レイヤーと一緒に探ります。</p>
     <div className="tetra-stage-wrap"><div className="drag-hint">← スワイプして回転 →</div><div className="tetra-stage" onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp}>
-      <TetraCanvas labels={labels} rotation={rotation} activeCategory={activeCategory} onVertexSelect={setActiveCategory} />
+      <TetraCanvas labels={labels} rotation={rotation} activeCategory={activeCanonicalVertex} onVertexSelect={selectCanonicalVertex} />
     </div></div>
-    <div className="selected-axis"><span className="eyebrow">選択中の頂点</span><strong>{categoryLabels[activeCategory]}</strong><span>{categoryDescriptions[activeCategory]}</span></div>
+    <div className="selected-axis"><span className="eyebrow">選択中の頂点 / 正典四面体</span><strong>{canonicalVertexLabels[activeCanonicalVertex]}</strong><span>{canonicalVertexDescriptions[activeCanonicalVertex]}</span><small className="support-layer">料理の補助レイヤー：{categoryLabels[activeCategory]}</small></div>
+    <div className="secondary-layer-nav" aria-label="料理の補助レイヤー">{categoryOrder.map((category) => <button key={category} className={activeCategory === category ? "active" : ""} onClick={() => setActiveCategory(category)}>{categoryLabels[category]}</button>)}</div>
     <div className="choice-scroller">{cookingElements[activeCategory].map((item) => <button key={item.id} className={selection[activeCategory] === item.id ? "selected" : ""} onClick={() => onSelect(activeCategory, item.id)}><i style={{ backgroundColor: item.color }} />{item.name}</button>)}</div>
     <div className="tetra-actions"><button className="button button-outline" onClick={onRandomize}>おまかせ <span>↻</span></button><button className="button button-outline" onClick={onNudge}>少し変える <span>↗</span></button></div><button className="button button-dark button-wide search-combination" onClick={onSearch}>この組み合わせで探す <span>→</span></button>
     <div className="result-header"><div><span className="eyebrow">この組み合わせから</span><h2>料理候補 <em>03</em></h2></div><button className="text-button result-link">一覧を見る</button></div>
     <div className="suggestion-stack">{suggestions.map((dish, index) => <SuggestionCard key={dish.id} dish={dish} index={index} onOpen={() => onOpenDish(dish)} onSave={() => onSave(dish)} saved={savedDishIds.includes(dish.id)} />)}</div>
   </section>;
-}
-
-function activeElementsFor(selection: Record<ElementCategory, string>) {
-  return categoryOrder.map((category) => ({ category, element: findElement(category, selection[category]) }));
 }
 
 type TetraPoint = { x: number; y: number; z: number };
@@ -409,7 +432,7 @@ const tetraPoints: TetraPoint[] = [
 
 const tetraEdges = [[0, 1], [0, 2], [0, 3], [1, 2], [1, 3], [2, 3]];
 const tetraFaces = [[0, 1, 2], [0, 1, 3], [0, 2, 3], [1, 2, 3]];
-const tetraColors = ["#4e7a3f", "#b54a2f", "#a8781c", "#35608f"];
+const tetraColors = ["#b54a2f", "#35608f", "#4e7a3f", "#a8781c"];
 
 function rotateTetraPoint(point: TetraPoint, rotation: { x: number; y: number }) {
   const yaw = (rotation.x * Math.PI) / 180;
@@ -438,7 +461,7 @@ function projectTetraPoint(point: TetraPoint, rotation: { x: number; y: number }
   };
 }
 
-function TetraCanvas({ labels, rotation, activeCategory, onVertexSelect }: { labels: Array<{ category: ElementCategory; element: { name: string } }>; rotation: { x: number; y: number }; activeCategory: ElementCategory; onVertexSelect: (category: ElementCategory) => void }) {
+function TetraCanvas({ labels, rotation, activeCategory, onVertexSelect }: { labels: Array<{ category: CanonicalVertex; element: { name: string } }>; rotation: { x: number; y: number }; activeCategory: CanonicalVertex; onVertexSelect: (category: CanonicalVertex) => void }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const projected = tetraPoints.map((point) => projectTetraPoint(point, rotation));
 
@@ -455,7 +478,7 @@ function TetraCanvas({ labels, rotation, activeCategory, onVertexSelect }: { lab
     context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
     context.clearRect(0, 0, width, height);
 
-    const faceColors = ["rgba(78, 122, 63, .13)", "rgba(181, 74, 47, .13)", "rgba(168, 120, 28, .13)", "rgba(53, 96, 143, .13)"];
+    const faceColors = ["rgba(181, 74, 47, .13)", "rgba(53, 96, 143, .13)", "rgba(78, 122, 63, .13)", "rgba(168, 120, 28, .13)"];
     tetraFaces
       .map((face, index) => ({ face, index, depth: face.reduce((sum, pointIndex) => sum + projected[pointIndex].z, 0) / 3 }))
       .sort((a, b) => a.depth - b.depth)
@@ -485,7 +508,7 @@ function TetraCanvas({ labels, rotation, activeCategory, onVertexSelect }: { lab
     });
 
     projected.forEach((point, index) => {
-      const isActive = categoryOrder[index] === activeCategory;
+      const isActive = canonicalOrder[index] === activeCategory;
       context.beginPath();
       context.arc(point.x, point.y, isActive ? 11 : 9, 0, Math.PI * 2);
       context.fillStyle = "#eee8dd";
@@ -500,7 +523,7 @@ function TetraCanvas({ labels, rotation, activeCategory, onVertexSelect }: { lab
     });
   }, [activeCategory, projected, rotation]);
 
-  return <div className="tetra-canvas-layer"><canvas ref={canvasRef} className="tetra-canvas" width={300} height={245} aria-label="4要素を立体的に回転できる四面体" />{labels.map(({ category, element }, index) => { const point = projected[index]; return <button key={category} className={`vertex vertex-3d vertex-${index} vertex-${category} ${activeCategory === category ? "active" : ""}`} style={{ left: point.x, top: point.y }} onClick={() => onVertexSelect(category)}><span className="vertex-dot" /><span className="vertex-tag"><small>{categoryLabels[category]}</small>{element.name}</span></button>; })}</div>;
+  return <div className="tetra-canvas-layer"><canvas ref={canvasRef} className="tetra-canvas" width={300} height={245} aria-label="火・水・空気・油を立体的に回転できる四面体" />{labels.map(({ category, element }, index) => { const point = projected[index]; return <button key={category} className={`vertex vertex-3d vertex-${index} vertex-${category} ${activeCategory === category ? "active" : ""}`} style={{ left: point.x, top: point.y }} onClick={() => onVertexSelect(category)}><span className="vertex-dot" /><span className="vertex-tag"><small>{canonicalVertexLabels[category]}</small>{element.name}</span></button>; })}</div>;
 }
 
 function SuggestionCard({ dish, index, onOpen, onSave, saved }: { dish: Dish; index: number; onOpen: () => void; onSave: () => void; saved: boolean }) {
@@ -530,7 +553,7 @@ function TasteScreen({ user, logs, mapGrowth, challenges, onOpenPro }: { user: U
 
 function DishDetail({ dish, saved, onBack, onSave, onCook, onTasteChange }: { dish: Dish; saved: boolean; onBack: () => void; onSave: () => void; onCook: () => void; onTasteChange: (category: ElementCategory) => void }) {
   const [changeOpen, setChangeOpen] = useState(false);
-  return <section className="overlay-screen detail-screen"><button className="back-button" onClick={onBack}>← <span>戻る</span></button><div className="detail-hero"><div className="dish-illustration large"><span className="illustration-label">{dish.origin}</span><div className="plate"><div className={`plate-food food-${dish.foodElement}`} /><div className="plate-garnish" /></div><span className="dish-number">RY / {dish.id.slice(0, 2).toUpperCase()}</span></div><div className="detail-kicker"><span className="level-badge">{dish.adventureLevel}</span><span>{dish.cookingTime} · {dish.difficulty}</span></div><h1>{dish.name}</h1><p>{dish.description}</p></div><section className="detail-section"><div className="section-heading"><div><span className="eyebrow">この料理の四面体</span><h2>4つの要素</h2></div></div><div className="element-grid">{categoryOrder.map((category) => <div key={category}><span>{categoryLabels[category]}</span><strong>{labelForId(dish[`${category === "food" ? "food" : category === "method" ? "cookingMethod" : category === "seasoning" ? "seasoning" : "texture"}Element`] as string)}</strong></div>)}</div></section><section className="reason-panel"><span className="eyebrow">WHY IT WORKS</span><h2>この組み合わせが<br />おいしい理由</h2><p>{dish.reasonWhyItWorks}</p></section><section className="detail-section ingredient-section"><div className="section-heading"><div><span className="eyebrow">台所にあるもの</span><h2>材料</h2></div></div><div className="ingredient-lines">{dish.ingredients.map((ingredient) => <span key={ingredient}>{ingredient}</span>)}</div></section><section className="detail-section steps-section"><div className="section-heading"><div><span className="eyebrow">ゆっくり、順番に</span><h2>調理手順</h2></div></div><ol>{dish.steps.map((step, index) => <li key={step}><span>0{index + 1}</span><p>{step}</p></li>)}</ol></section><section className="change-section"><button className="change-toggle" onClick={() => setChangeOpen(!changeOpen)}><span><span className="eyebrow">FLAVOR SHIFT</span><strong>味を変える</strong></span><span>{changeOpen ? "−" : "+"}</span></button>{changeOpen && <div className="change-options">{([ ["さっぱり", "texture"], ["香ばしく", "method"], ["辛さを加える", "seasoning"], ["食感を変える", "texture"] ] as [string, ElementCategory][]).map(([label, category]) => <button key={`${label}-${category}`} onClick={() => onTasteChange(category)}><span>{label}</span><small>→ {categoryLabels[category]}の頂点が動く</small></button>)}</div>}</section><section className="alternative-section"><span className="eyebrow">替えてもいいもの</span><div>{dish.alternatives.map((item) => <span key={item}>{item}</span>)}</div></section><div className="detail-actions"><button className="button button-outline" onClick={onSave}>{saved ? "保存済み" : "保存する"}</button><button className="button button-dark" onClick={onCook}>作ってみる <span>→</span></button></div></section>;
+  return <section className="overlay-screen detail-screen"><button className="back-button" onClick={onBack}>← <span>戻る</span></button><div className="detail-hero"><div className="dish-illustration large"><span className="illustration-label">{dish.origin}</span><div className="plate"><div className={`plate-food food-${dish.foodElement}`} /><div className="plate-garnish" /></div><span className="dish-number">RY / {dish.id.slice(0, 2).toUpperCase()}</span></div><div className="detail-kicker"><span className="level-badge">{dish.adventureLevel}</span><span>{dish.cookingTime} · {dish.difficulty}</span></div><h1>{dish.name}</h1><p>{dish.description}</p></div><section className="detail-section"><div className="section-heading"><div><span className="eyebrow">料理の補助レイヤー</span><h2>4つの要素</h2></div></div><div className="element-grid">{categoryOrder.map((category) => <div key={category}><span>{categoryLabels[category]}</span><strong>{labelForId(dish[`${category === "food" ? "food" : category === "method" ? "cookingMethod" : category === "seasoning" ? "seasoning" : "texture"}Element`] as string)}</strong></div>)}</div></section><section className="reason-panel"><span className="eyebrow">WHY IT WORKS</span><h2>この組み合わせが<br />おいしい理由</h2><p>{dish.reasonWhyItWorks}</p></section><section className="detail-section ingredient-section"><div className="section-heading"><div><span className="eyebrow">台所にあるもの</span><h2>材料</h2></div></div><div className="ingredient-lines">{dish.ingredients.map((ingredient) => <span key={ingredient}>{ingredient}</span>)}</div></section><section className="detail-section steps-section"><div className="section-heading"><div><span className="eyebrow">ゆっくり、順番に</span><h2>調理手順</h2></div></div><ol>{dish.steps.map((step, index) => <li key={step}><span>0{index + 1}</span><p>{step}</p></li>)}</ol></section><section className="change-section"><button className="change-toggle" onClick={() => setChangeOpen(!changeOpen)}><span><span className="eyebrow">FLAVOR SHIFT</span><strong>味を変える</strong></span><span>{changeOpen ? "−" : "+"}</span></button>{changeOpen && <div className="change-options">{([ ["さっぱり", "texture"], ["香ばしく", "method"], ["辛さを加える", "seasoning"], ["食感を変える", "texture"] ] as [string, ElementCategory][]).map(([label, category]) => <button key={`${label}-${category}`} onClick={() => onTasteChange(category)}><span>{label}</span><small>→ {categoryLabels[category]}の頂点が動く</small></button>)}</div>}</section><section className="alternative-section"><span className="eyebrow">替えてもいいもの</span><div>{dish.alternatives.map((item) => <span key={item}>{item}</span>)}</div></section><div className="detail-actions"><button className="button button-outline" onClick={onSave}>{saved ? "保存済み" : "保存する"}</button><button className="button button-dark" onClick={onCook}>作ってみる <span>→</span></button></div></section>;
 }
 
 function RecordForm({ dish, saved, onBack, onSave }: { dish: Dish; saved: boolean; onBack: () => void; onSave: (log: RecordDraft) => void }) {

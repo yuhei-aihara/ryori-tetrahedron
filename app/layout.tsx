@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "料理の四面体 — 食の博物誌",
-  description: "食材・調理法・味付け・食感を組み合わせて、まだ知らない料理を発見する。",
+  description: "火・水・空気・油の四面体を動かし、まだ知らない料理を発見する。",
   manifest: "/manifest.webmanifest",
   themeColor: "#f4eee1",
   icons: {
