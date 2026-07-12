@@ -26,7 +26,7 @@ test("server-renders the recipe tetrahedron shell", async () => {
 });
 
 test("keeps the product metadata and mobile entry points", async () => {
-  const [page, layout, css, manifest, recipeData, tetraTest, roulette, heroTest] = await Promise.all([
+  const [page, layout, css, manifest, recipeData, tetraTest, roulette, heroTest, heroContent] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
@@ -35,6 +35,7 @@ test("keeps the product metadata and mobile entry points", async () => {
     readFile(new URL("../app/tetra-test.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/roulette.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/home-hero-test.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/hero-content.ts", import.meta.url), "utf8"),
   ]);
 
   assert.match(page, /食材と気分から探す/);
@@ -56,10 +57,16 @@ test("keeps the product metadata and mobile entry points", async () => {
   assert.match(page, /home-v3/);
   assert.match(page, /<HomeHeroTest \/>/);
   assert.match(heroTest, /いつもの料理を、/);
-  assert.match(heroTest, /もっと香ばしく/);
   assert.match(heroTest, /どこまで動かす/);
   assert.match(heroTest, /料理の地図を見る/);
   assert.match(heroTest, /もう一歩動かす/);
+  assert.match(heroTest, /味の変化/);
+  assert.equal((heroContent.match(/^    id: /gm) ?? []).length, 5);
+  assert.match(heroContent, /ポテトサラダ/);
+  assert.match(heroContent, /もっと香ばしく/);
+  assert.match(heroContent, /鶏むね肉の塩焼き/);
+  assert.match(heroContent, /きのこのバター炒め/);
+  assert.match(heroTest, /少し動かす/);
   assert.match(page, /tasteScoreFromLogs/);
   assert.match(tetraTest, /今日は何を/);
   assert.match(tetraTest, /いま決まっていることから探す/);
