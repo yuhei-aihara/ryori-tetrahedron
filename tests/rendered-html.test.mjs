@@ -26,18 +26,23 @@ test("server-renders the recipe tetrahedron shell", async () => {
 });
 
 test("keeps the product metadata and mobile entry points", async () => {
-  const [page, layout, css, manifest, recipeData, tetraTest] = await Promise.all([
+  const [page, layout, css, manifest, recipeData, tetraTest, roulette] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
     readFile(new URL("../public/manifest.webmanifest", import.meta.url), "utf8"),
     readFile(new URL("../app/recipe-data.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/tetra-test.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/roulette.tsx", import.meta.url), "utf8"),
   ]);
 
   assert.match(page, /食材と気分から探す/);
   assert.match(page, /保存した料理|定番料理/);
-  assert.match(page, /料理の地図を見る/);
+  assert.match(page, /四面体ルーレット/);
+  assert.match(roulette, /献立ルーレット/);
+  assert.match(roulette, /四面体を回す/);
+  assert.match(roulette, /もう一度回す/);
+  assert.match(roulette, /30分以内/);
   assert.match(page, /今週のテーマ/);
   assert.match(page, /味覚マップに反映しました/);
   assert.match(page, /料理体験チャレンジ/);

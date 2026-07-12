@@ -16,6 +16,7 @@ import {
   type User,
 } from "./recipe-data";
 import TetraTestScreen from "./tetra-test";
+import RouletteModal from "./roulette";
 
 type Screen = "home" | "tetra" | "explore" | "record" | "taste";
 type Overlay = "detail" | "record" | "pro" | null;
@@ -280,6 +281,7 @@ export default function Home() {
   const [whyOpen, setWhyOpen] = useState(false);
   const [toast, setToast] = useState("");
   const [recordSaved, setRecordSaved] = useState(false);
+  const [rouletteOpen, setRouletteOpen] = useState(false);
   const [guideMode, setGuideMode] = useState<GuideMode | null>(null);
 
   useEffect(() => {
@@ -378,6 +380,7 @@ export default function Home() {
   const navigate = (next: Screen) => {
     setScreen(next);
     setOverlay(null);
+    setRouletteOpen(false);
     setWhyOpen(false);
   };
 
@@ -403,7 +406,7 @@ export default function Home() {
     setToast("味覚マップに反映しました");
   };
 
-  const showMain = overlay === null && guideMode === null;
+  const showMain = overlay === null && guideMode === null && !rouletteOpen;
 
   return (
     <main className="app-shell">
@@ -418,7 +421,7 @@ export default function Home() {
             setWhyOpen={setWhyOpen}
             savedDishes={savedDishes}
             mapGrowth={mapGrowth}
-            onExplore={() => navigate("tetra")}
+            onOpenRoulette={() => setRouletteOpen(true)}
             onStartGuide={(mode) => setGuideMode(mode)}
             theme={activeTheme}
             onOpenTheme={applyTheme}
@@ -467,6 +470,7 @@ export default function Home() {
           />
         )}
         {overlay === "pro" && <ProModal onClose={() => setOverlay(null)} />}
+        {rouletteOpen && <RouletteModal onClose={() => setRouletteOpen(false)} onOpenDish={openDish} />}
       </div>
 
       {guideMode && <GuidedDiscovery mode={guideMode} savedDishes={savedDishes} onClose={() => setGuideMode(null)} onOpenDish={openGuideDish} onOpenMap={openGuideMap} onSave={saveDish} savedDishIds={savedDishIds} />}
@@ -510,19 +514,19 @@ function TopBar({ eyebrow, title, note }: { eyebrow: string; title: string; note
 }
 
 function HomeScreen({
-  user, dailyLevel, setDailyLevel, dish, whyOpen, setWhyOpen, savedDishes, mapGrowth, onExplore, onStartGuide, theme, onOpenTheme, onOpenDish, onSave, savedDishIds,
+  user, dailyLevel, setDailyLevel, dish, whyOpen, setWhyOpen, savedDishes, mapGrowth, onOpenRoulette, onStartGuide, theme, onOpenTheme, onOpenDish, onSave, savedDishIds,
 }: {
-  user: User; dailyLevel: AdventureLevel; setDailyLevel: (level: AdventureLevel) => void; dish: Dish; whyOpen: boolean; setWhyOpen: (open: boolean) => void; savedDishes: Dish[]; mapGrowth: number; onExplore: () => void; onStartGuide: (mode: GuideMode) => void; theme: ExplorationTheme; onOpenTheme: () => void; onOpenDish: (dish: Dish) => void; onSave: (dish: Dish) => void; savedDishIds: string[];
+  user: User; dailyLevel: AdventureLevel; setDailyLevel: (level: AdventureLevel) => void; dish: Dish; whyOpen: boolean; setWhyOpen: (open: boolean) => void; savedDishes: Dish[]; mapGrowth: number; onOpenRoulette: () => void; onStartGuide: (mode: GuideMode) => void; theme: ExplorationTheme; onOpenTheme: () => void; onOpenDish: (dish: Dish) => void; onSave: (dish: Dish) => void; savedDishIds: string[];
 }) {
   return <section className="screen home-screen">
     <TopBar eyebrow="土曜日 / 07月11日" title={`おかえりなさい、${user.name}`} note={`${user.streak}日連続`} />
     <div className="home-intro"><span className="home-kicker">TODAY&apos;S COOKING IDEA</span><p>いつもの食材を、<br /><em>いつもと違う料理</em>に。</p><small>食材や今の気分を選ぶと、料理の方向から候補を見つけます。</small></div>
     <div className="home-journey" aria-label="このアプリでできること"><span><b>1</b> 条件を選ぶ</span><i>→</i><span><b>2</b> 候補を見る</span><i>→</i><span><b>3</b> 地図で深掘り</span></div>
     <section className="home-doors">
-      <div className="section-heading"><div><span className="eyebrow">料理を見つける</span><h2>どちらから始めますか？</h2></div><span className="section-index">START</span></div>
+      <div className="section-heading"><div><span className="eyebrow">料理を見つける</span><h2>どこから始めますか？</h2></div><span className="section-index">START</span></div>
       <button className="guide-door guide-door-primary" onClick={() => onStartGuide("ingredient")}><span className="guide-door-mark">冷</span><span><strong>食材と気分から探す</strong><small>食材・時間・テイストを選ぶと、候補が3皿出ます</small></span><b>→</b></button>
       <button className="guide-door" onClick={() => onStartGuide("transform")}><span className="guide-door-mark">変</span><span><strong>{savedDishes.length ? "保存した料理を変える" : "定番料理を変える"}</strong><small>{savedDishes.length ? "保存した料理を選び、変えたい方向を決めます" : "ポテトサラダなどの定番から、変えたい方向を決めます"}</small></span><b>→</b></button>
-      <button className="home-map-link" onClick={onExplore}><span><strong>料理の地図を見る</strong><small>四面体は、候補同士の近さを見る地図です</small></span><b>◇</b></button>
+      <button className="home-roulette-link" onClick={onOpenRoulette}><span className="home-roulette-mark">↻</span><span><strong>四面体ルーレット</strong><small>条件を少し絞って、今日の一皿を偶然から見つける</small></span><b>→</b></button>
     </section>
     <section className="home-theme-card"><div><span className="eyebrow">{theme.period}</span><h2>{theme.title}</h2><p>{theme.prompt}</p></div><button className="button button-outline" onClick={onOpenTheme}>テーマで探す →</button><small>{theme.description} · 現在の料理標本 {dishes.length}皿</small></section>
     <section className="idea-section">
