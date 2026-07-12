@@ -17,6 +17,7 @@ import {
 } from "./recipe-data";
 import TetraTestScreen from "./tetra-test";
 import RouletteModal from "./roulette";
+import HomeHeroTest from "./home-hero-test";
 
 type Screen = "home" | "tetra" | "explore" | "record" | "taste";
 type Overlay = "detail" | "record" | "pro" | null;
@@ -312,6 +313,8 @@ export default function Home() {
   }
 
   const tetraTestMode = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("test") === "tetra-v2";
+  const heroTestMode = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("test") === "home-v3";
+  if (heroTestMode) return <HomeHeroTest />;
   if (tetraTestMode) return <TetraTestScreen variant="test" />;
 
   if (!user.onboardingCompleted) {
