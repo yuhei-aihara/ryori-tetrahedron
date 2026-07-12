@@ -526,7 +526,7 @@ function HomeScreen({
       <div className="section-heading"><div><span className="eyebrow">料理を見つける</span><h2>どこから始めますか？</h2></div><span className="section-index">START</span></div>
       <button className="guide-door guide-door-primary" onClick={() => onStartGuide("ingredient")}><span className="guide-door-mark">冷</span><span><strong>食材と気分から探す</strong><small>食材・時間・テイストを選ぶと、候補が3皿出ます</small></span><b>→</b></button>
       <button className="guide-door" onClick={() => onStartGuide("transform")}><span className="guide-door-mark">変</span><span><strong>{savedDishes.length ? "保存した料理を変える" : "定番料理を変える"}</strong><small>{savedDishes.length ? "保存した料理を選び、変えたい方向を決めます" : "ポテトサラダなどの定番から、変えたい方向を決めます"}</small></span><b>→</b></button>
-      <button className="home-roulette-link" onClick={onOpenRoulette}><span className="home-roulette-mark">↻</span><span><strong>四面体ルーレット</strong><small>条件を少し絞って、今日の一皿を偶然から見つける</small></span><b>→</b></button>
+      <button className="guide-door guide-door-roulette" onClick={onOpenRoulette}><span className="guide-door-mark">↻</span><span><strong>四面体ルーレット</strong><small>条件を少し絞って、今日の一皿を偶然から見つける</small></span><b>→</b></button>
     </section>
     <section className="home-theme-card"><div><span className="eyebrow">{theme.period}</span><h2>{theme.title}</h2><p>{theme.prompt}</p></div><button className="button button-outline" onClick={onOpenTheme}>テーマで探す →</button><small>{theme.description} · 現在の料理標本 {dishes.length}皿</small></section>
     <section className="idea-section">
