@@ -42,10 +42,10 @@ type Point3D = { x: number; y: number; z: number };
 type ProjectedPoint = Point3D & { depth: number };
 
 const tetraVertices: Point3D[] = [
-  { x: 0, y: -1.05, z: 0.72 },
-  { x: -0.96, y: 0.55, z: 0.42 },
-  { x: 0.96, y: 0.55, z: 0.42 },
-  { x: 0, y: 0.55, z: -1.05 },
+  { x: 0, y: -1, z: 0 },
+  { x: -0.943, y: 0.333, z: 0 },
+  { x: 0.471, y: 0.333, z: 0.816 },
+  { x: 0.471, y: 0.333, z: -0.816 },
 ];
 const tetraFaces = [[0, 1, 2], [0, 2, 3], [0, 3, 1], [1, 3, 2]];
 const tetraEdges = [[0, 1], [0, 2], [0, 3], [1, 2], [1, 3], [2, 3]];
@@ -94,7 +94,7 @@ function shiftedDish(base: Dish, direction: ShiftDirection) {
 }
 
 function RouletteTetra({ spinning, accent }: { spinning: boolean; accent: string }) {
-  const [rotation, setRotation] = useState({ x: .56, y: -.72 });
+  const [rotation, setRotation] = useState({ x: -.45, y: .15 });
   const rotationRef = useRef(rotation);
 
   useEffect(() => {
