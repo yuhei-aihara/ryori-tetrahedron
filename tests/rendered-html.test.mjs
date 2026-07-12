@@ -56,6 +56,8 @@ test("keeps the product metadata and mobile entry points", async () => {
   assert.match(page, /<TetraTestScreen variant="test" \/>/);
   assert.match(page, /home-v3/);
   assert.match(page, /<HomeHeroTest \/>/);
+  assert.match(page, /variant="production"/);
+  assert.match(page, /onOpenMap={openGuideMap}/);
   assert.match(heroTest, /いつもの料理を、/);
   assert.match(heroTest, /どこまで動かす/);
   assert.match(heroTest, /料理の地図を見る/);
@@ -67,6 +69,8 @@ test("keeps the product metadata and mobile entry points", async () => {
   assert.match(heroContent, /鶏むね肉の塩焼き/);
   assert.match(heroContent, /きのこのバター炒め/);
   assert.match(heroTest, /少し動かす/);
+  assert.match(heroTest, /FIRST RELEASE/);
+  assert.match(heroTest, /onOpenMap/);
   assert.match(page, /tasteScoreFromLogs/);
   assert.match(tetraTest, /今日は何を/);
   assert.match(tetraTest, /いま決まっていることから探す/);

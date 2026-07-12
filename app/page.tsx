@@ -314,6 +314,7 @@ export default function Home() {
 
   const tetraTestMode = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("test") === "tetra-v2";
   const heroTestMode = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("test") === "home-v3";
+  const legacyHomeMode = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("legacy-home") === "true";
   if (heroTestMode) return <HomeHeroTest />;
   if (tetraTestMode) return <TetraTestScreen variant="test" />;
 
@@ -415,23 +416,31 @@ export default function Home() {
     <main className="app-shell">
       <div className="app-scroll">
         {showMain && screen === "home" && (
-          <HomeScreen
-            user={user}
-            dailyLevel={dailyLevel}
-            setDailyLevel={setDailyLevel}
-            dish={currentHomeDish}
-            whyOpen={whyOpen}
-            setWhyOpen={setWhyOpen}
-            savedDishes={savedDishes}
-            mapGrowth={mapGrowth}
-            onOpenRoulette={() => setRouletteOpen(true)}
-            onStartGuide={(mode) => setGuideMode(mode)}
-            theme={activeTheme}
-            onOpenTheme={applyTheme}
-            onOpenDish={openDish}
-            onSave={saveDish}
-            savedDishIds={savedDishIds}
-          />
+          legacyHomeMode ? (
+            <HomeScreen
+              user={user}
+              dailyLevel={dailyLevel}
+              setDailyLevel={setDailyLevel}
+              dish={currentHomeDish}
+              whyOpen={whyOpen}
+              setWhyOpen={setWhyOpen}
+              savedDishes={savedDishes}
+              mapGrowth={mapGrowth}
+              onOpenRoulette={() => setRouletteOpen(true)}
+              onStartGuide={(mode) => setGuideMode(mode)}
+              theme={activeTheme}
+              onOpenTheme={applyTheme}
+              onOpenDish={openDish}
+              onSave={saveDish}
+              savedDishIds={savedDishIds}
+            />
+          ) : (
+            <HomeHeroTest
+              variant="production"
+              onOpenMap={openGuideMap}
+              onOpenBrowse={() => setScreen("tetra")}
+            />
+          )
         )}
         {showMain && screen === "tetra" && <TetraTestScreen variant="production" savedDishIds={savedDishIds} onSave={saveDish} onCook={startRecord} />}
         {showMain && screen === "explore" && (
